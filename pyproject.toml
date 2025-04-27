@@ -5,23 +5,23 @@ description = "Sample code for using Amazon Bedrock with Chainlit and MCP server
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "boto3>=1.37.26",
-    "chainlit>=2.4.400",
-    "langchain>=0.3.22",
-    "langchain-aws>=0.2.18",
-    "langchain-mcp-adapters>=0.0.6",
-    "langgraph>=0.3.24",
+    "boto3>=1.38.2",
+    "chainlit>=2.5.5",
+    "langchain>=0.3.24",
+    "langchain-aws>=0.2.22",
+    "langchain-mcp-adapters>=0.0.9",
+    "langgraph>=0.3.34",
     "loguru>=0.7.3",
-    "mcp[cli]>=1.4.1",
-    "pydantic>=2.11.2",
+    "mcp[cli]>=1.6.0",
+    "pydantic>=2.11.3",
 ]
 
 [dependency-groups]
 dev = [
     "bandit>=1.8.3",
-    "boto3-stubs[full]>=1.37.26",
-    "commitizen>=4.4.1",
-    "ruff>=0.11.3",
+    "boto3-stubs[full]>=1.38.2",
+    "commitizen>=4.6.0",
+    "ruff>=0.11.7",
 ]
 
 [build-system]
