@@ -2,6 +2,8 @@ import chainlit as cl
 import os
 import sys
 import traceback as tb
+from langchain.tools import StructuredTool
+from src.tools.visual import titan_image_generate, render_vega_lite_png
 from chainlit.mcp import McpConnection
 from langchain_core.messages import (
     AIMessageChunk,
@@ -23,7 +25,7 @@ logger.add(sys.stderr, level=os.getenv('LOG_LEVEL', 'ERROR'))
 bedrock_client = get_bedrock_client()
 chat_model = get_chat_model(
     model_id=ModelId.ANTHROPIC_CLAUDE_3_5_SONNET,
-    inference_config=InferenceConfig(temperature=1, max_tokens=2048),
+    inference_config=InferenceConfig(temperature=0.3, max_tokens=2048),
     thinking_config=None,
     client=bedrock_client,
 )
@@ -34,10 +36,38 @@ async def on_mcp(connection: McpConnection, session: ClientSession) -> None:
     """Called when an MCP connection is established."""
     await session.initialize()
     tools = await load_mcp_tools(session)
+    # ---- Local tools (image gen + vega-lite renderer) ----
+    tools += [
+        StructuredTool.from_function(
+            func=titan_image_generate,
+            name="titan_image_generate",
+            description=(
+                "Generate an image with Amazon Titan Image Generator v2. "
+                "Inputs: prompt (str), width (int, default 1024), height (int, default 1024), "
+                "cfg_scale (float, default 7.5), steps (int, default 30), negative_prompt (str, optional). "
+                "Returns a local PNG file path."
+            )
+        ),
+        StructuredTool.from_function(
+            func=render_vega_lite_png,
+            name="render_vega_lite_png",
+            description=(
+                "Render a Vega-Lite spec (JSON object) to a PNG and return the file path. "
+                "Use this for charts/graphs instead of image-generation models."
+            )
+        )
+    ]
     agent = create_react_agent(
         chat_model,
         tools,
-        prompt="You are a helpful assistant. You must use the tools provided to you to answer the user's question.",
+        prompt=(
+           "You are a helpful Cloud FinOps assistant.\n"
+           "- For image UNDERSTANDING: describe/answer directly from the user-provided image.\n"
+           "- For image GENERATION (illustrations, thumbnails): call the tool titan_image_generate.\n"
+           "- For CHARTS/GRAPHS: output a minimal Vega-Lite JSON spec and then call render_vega_lite_png with that spec.\n"
+           "- For ARCHITECTURE/DIAGRAMS: output Markdown with a fenced code block using ```mermaid ... ```.\n"
+           "Never ask the user to run tools manually; select and call them yourself."
+               )
     )
 
     cl.user_session.set('agent', agent)
@@ -78,19 +108,15 @@ async def on_message(message: cl.Message):
         response_message = cl.Message(content='')
 
         # Stream the response using the LangChain callback handler
-        # Update the config to include callbacks
         config['callbacks'] = [cb]
         async for msg, metadata in agent.astream(
             {'messages': message.content},
             stream_mode='messages',
             config=config,
         ):
-            # Handle AIMessageChunks with text content for streaming
             if isinstance(msg, AIMessageChunk) and msg.content:
-                # If content is a string, stream it directly
                 if isinstance(msg.content, str):
                     await response_message.stream_token(msg.content)
-                # If content is a list with dictionaries that have text
                 elif (
                     isinstance(msg.content, list)
                     and len(msg.content) > 0
@@ -100,11 +126,23 @@ async def on_message(message: cl.Message):
                 ):
                     await response_message.stream_token(msg.content[0]['text'])
 
+        # --- NEW: check if response contains an outputs/*.png path ---
+        text = response_message.content or ""
+        if isinstance(text, str) and "outputs/" in text and text.strip().endswith(".png"):
+            import os
+            try:
+                await cl.Image(
+                    path=text.strip(),
+                    name=os.path.basename(text.strip()),
+                    display="inline"
+                ).send()
+            except Exception:
+                pass
+
         # Send the complete message
         await response_message.send()
 
     except Exception as e:
-        # Error handling
         err_msg = cl.Message(content=f'Error: {str(e)}')
         await err_msg.send()
         logger.error(tb.format_exc())
