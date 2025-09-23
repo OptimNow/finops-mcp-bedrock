@@ -1,0 +1,88 @@
+[project]
+name = "sample-bedrock-chainlit-mcp"
+version = "0.1.0"
+description = "Sample code for using Amazon Bedrock with Chainlit and MCP servers"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "boto3>=1.37.16",
+    "chainlit>=2.4.201",
+    "langchain>=0.3.21",
+    "langchain-aws>=0.2.16",
+    "langchain-mcp-adapters>=0.0.5",
+    "langgraph>=0.3.18",
+    "loguru>=0.7.3",
+    "mcp[cli]>=1.4.1",
+    "pydantic>=2.10.6",
+]
+
+[dependency-groups]
+dev = [
+    "bandit>=1.8.3",
+    "boto3-stubs[full]>=1.37.16",
+    "commitizen>=4.4.1",
+    "ruff>=0.11.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+[project.scripts]
+sample-bedrock-chainlit-mcp = "src.mcp.server:main"
+
+
+
+[tool.ruff]
+line-length = 99
+extend-include = ["*.ipynb"]
+exclude = [
+    ".venv",
+    "**/__pycache__",
+    "**/node_modules",
+    "**/dist",
+    "**/build",
+    "**/env",
+    "**/.ruff_cache",
+    "**/.venv",
+    "**/.ipynb_checkpoints"
+]
+force-exclude = true
+
+[tool.ruff.lint]
+exclude = ["__init__.py"]
+select = ["C", "D", "E", "F", "I", "W"]
+ignore = ["C901", "E501", "E741", "F402", "F823", "D100", "D106"]
+
+[tool.ruff.lint.isort]
+lines-after-imports = 2
+no-sections = true
+
+[tool.ruff.lint.per-file-ignores]
+"**/*.ipynb" = ["F704"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+docstring-code-format = true
+
+[tool.commitizen]
+name = "cz_conventional_commits"
+version = "0.8.0"
+tag_format = "v$version"
+version_files = [
+    "pyproject.toml:version",
+    "ai3_diagrams_expert/__init__.py:__version__"
+]
+update_changelog_on_bump = true
