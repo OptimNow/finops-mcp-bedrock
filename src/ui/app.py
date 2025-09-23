@@ -22,9 +22,9 @@ logger.add(sys.stderr, level=os.getenv('LOG_LEVEL', 'ERROR'))
 
 bedrock_client = get_bedrock_client()
 chat_model = get_chat_model(
-    model_id=ModelId.ANTHROPIC_CLAUDE_3_7_SONNET,
-    inference_config=InferenceConfig(temperature=1, max_tokens=4096 * 8),
-    thinking_config=ThinkingConfig(budget_tokens=1024),
+    model_id=ModelId.ANTHROPIC_CLAUDE_3_5_SONNET,
+    inference_config=InferenceConfig(temperature=1, max_tokens=2048),
+    thinking_config=None,
     client=bedrock_client,
 )
 

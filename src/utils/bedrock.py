@@ -17,7 +17,7 @@ else:
     BedrockRuntimeClient = object
 
 
-def get_bedrock_client(region_name: str = 'us-west-2') -> BedrockRuntimeClient:
+def get_bedrock_client(region_name: str = 'us-east-1') -> BedrockRuntimeClient:
     """Get a Bedrock client.
 
     Uses a custom config with retries and read timeout.

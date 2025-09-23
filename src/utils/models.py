@@ -27,5 +27,5 @@ class InferenceConfig(BaseModel):
 
 class ModelId(str, Enum):
     """Model IDs for Bedrock."""
-
+    ANTHROPIC_CLAUDE_3_5_SONNET = 'anthropic.claude-3-5-sonnet-20241022-v2:0'
     ANTHROPIC_CLAUDE_3_7_SONNET = 'anthropic.claude-3-7-sonnet-20250219-v1:0'
