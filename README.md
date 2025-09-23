@@ -1,7 +1,7 @@
 <<<<<<< HEAD
 # finops-mcp-bedrock
 GenAI FinOps accelerator in chainlit on EC2 with LLM in Bedrock
-=======
+======= All below to be updated =====
 # Amazon Bedrock and MCP Server integration, the easy way
 
 This project demonstrates how to integrate foundation models on Amazon Bedrock with Chainlit and MCP (Model Context Protocol) servers to create an interactive chat interface with tool-enhanced capabilities.
@@ -10,7 +10,7 @@ This project demonstrates how to integrate foundation models on Amazon Bedrock w
 
 This sample application showcases:
 
-- Integration with Amazon Bedrock using Anthropic Claude 3.7 Sonnet
+- Integration with Amazon Bedrock using Anthropic Claude 3.5 Sonnet
 - A Chainlit web interface for conversational AI interactions
 - A custom Model Context Protocol (MCP) server that performs basic math operations
 - Streaming responses for a smooth user experience
