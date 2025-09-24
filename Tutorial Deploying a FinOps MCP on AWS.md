@@ -1,4 +1,4 @@
-# Tutorial: Deploying a FinOps MCP on AWS
+# Work In Progress - Tutorial: Deploying a FinOps MCP on AWS
 
 
 
@@ -72,9 +72,7 @@
 - Attach the **Key Pair**,  **IAM Role** and the **Security Group**.
 - Verify that the instance runs in the same region where Bedrock is enabled. (we will be using North Virginia all along this tutorial)
 
-ssh -i "C:\Users\jlati\Documents\MCP\MCPBedrock\MCPBedrockKP.pem" ec2-user@ec2-34-229-142-30.compute-1.amazonaws.com
 
-chmod 400 "C:\Users\jlati\Documents\MCP\MCPBedrock\MCPBedrockKP.pem"
 
 ------
 
