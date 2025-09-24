@@ -1,0 +1,95 @@
+/* ===== OptimNow Chainlit Custom UI ===== */
+
+/* Global background */
+body {
+  background: #fdfcf7; /* cream white */
+  font-family: "Inter", sans-serif;
+  color: #000000;
+}
+
+/* Header logo/banner */
+header {
+  background: #7FFF00 !important; /* chartreuse */
+  padding: 10px;
+}
+header img {
+  max-height: 40px;
+}
+
+/* Hide the default Chainlit logo (both text + icon) */
+.cl-logo, 
+.cl-logo svg, 
+.cl-logo-text {
+  display: none !important;
+}
+
+/* Inject OptimNow logo in header */
+header::before {
+  content: url("/public/optimnow_logo.png");
+  display: block;
+  height: 50px;
+  margin: 5px 0;
+}
+
+/* Hide Chainlit splash logo/text completely */
+.cl-welcome-logo,
+.cl-welcome-logo svg,
+.cl-welcome-logo img {
+  display: none !important;
+}
+
+/* Optional: custom welcome banner */
+.cl-welcome::before {
+  content: url("/public/optimnow_logo.png");
+  display: block;
+  margin: 40px auto;
+  max-height: 120px;
+}
+
+
+
+/* Chat input box */
+.cl-input {
+  border-radius: 12px !important;
+  border: 2px solid #7FFF00 !important; /* chartreuse border */
+  background: #ffffff;
+  font-size: 16px;
+}
+
+/* Assistant (AI) messages */
+.cl-message.ai {
+  background: #f5fff0 !important; /* very light green */
+  border-left: 4px solid #7FFF00 !important;
+  border-radius: 12px;
+  padding: 10px;
+}
+
+/* User messages */
+.cl-message.user {
+  background: #eaf3ff !important; /* light blue */
+  border-left: 4px solid #0066ff !important;
+  border-radius: 12px;
+  padding: 10px;
+}
+
+/* Buttons */
+button {
+  background-color: #7FFF00 !important;
+  color: #000000 !important;
+  border-radius: 8px !important;
+  font-weight: 600;
+}
+button:hover {
+  background-color: #66cc00 !important;
+}
+
+/* Sidebar */
+.cl-sidebar {
+  background: #f9faf9 !important;
+  border-right: 2px solid #7FFF00 !important;
+}
+
+/* Links */
+a {
+  color: #0066ff !important;
+}

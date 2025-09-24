@@ -1,5 +1,7 @@
 # src/tools/visual.py
+from typing import Union
 from typing import Optional, Dict, Any
+import altair as alt
 import base64, io, json, os
 from PIL import Image
 import vl_convert as vlc
@@ -51,19 +53,24 @@ def titan_image_generate(
     return out_path
 
 # ---------- Vega-Lite rendering ----------
-def render_vega_lite_png(spec: Dict[str, Any], width: Optional[int] = None, height: Optional[int] = None) -> str:
-    """
-    Render a Vega-Lite spec (dict) to a PNG file and return the file path.
-    """
-    if width:
-        spec.setdefault("width", width)
-    if height:
-        spec.setdefault("height", height)
+import json
+import altair as alt
+import os
 
-    png_bytes = vlc.vegalite_to_png(spec=spec)
-    out_dir = "outputs"
-    os.makedirs(out_dir, exist_ok=True)
-    out_path = os.path.join(out_dir, "chart.png")
-    with open(out_path, "wb") as f:
-        f.write(png_bytes)
-    return out_path
+def render_vega_lite_png(spec: Union[str, dict], output_path: str = "outputs/chart.png") -> str:
+    import altair as alt
+    import json
+
+    # Accept string or dict
+    if isinstance(spec, str):
+        spec = json.loads(spec)
+
+    # Force mode to vega-lite
+    if "$schema" in spec:
+        spec.pop("$schema", None)
+
+    chart = alt.Chart.from_dict(spec)
+    chart.save(output_path, format="png")
+    return output_path
+
+
