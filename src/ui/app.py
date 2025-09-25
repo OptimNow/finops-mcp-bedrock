@@ -75,19 +75,53 @@ async def on_chat_start():
 
 
 
-@cl.on_mcp_connect
+@cl.on_mcp_connect  # type: ignore
 async def on_mcp(connection: McpConnection, session: ClientSession) -> None:
-    await session.initialize()
-    mcp_tools = await load_mcp_tools(session)
+    """Called when an MCP connection is established."""
+    try:
+        await session.initialize()
+        tools = await load_mcp_tools(session)
 
-    # Extend existing tools
-    agent = cl.user_session.get("agent")
-    if agent:
-        agent.tools.extend(mcp_tools)  # Add MCP tools dynamically
+        if not tools:
+            logger.error("No MCP tools loaded from session.")
+            await cl.Message(content="⚠️ MCP connected, but no tools available.").send()
+        else:
+            logger.info(f"Loaded {len(tools)} MCP tools.")
+
+        # ---- Local tools (image gen + vega-lite renderer) ----
+        tools += [
+            StructuredTool.from_function(
+                func=titan_image_generate,
+                name="titan_image_generate",
+                description="Generate an image with Amazon Titan Image Generator v2.",
+            ),
+            StructuredTool.from_function(
+                func=render_vega_lite_png,
+                name="render_vega_lite_png",
+                description="Render a Vega-Lite spec (JSON object) to a PNG file.",
+            ),
+        ]
+
+        agent = create_react_agent(
+            chat_model,
+            tools,
+            prompt=(
+                "You are a helpful Cloud FinOps assistant.\n"
+                "- For image GENERATION: use titan_image_generate.\n"
+                "- For CHARTS/GRAPHS: use render_vega_lite_png.\n"
+                "- For diagrams: output mermaid Markdown.\n"
+            ),
+        )
+
         cl.user_session.set("agent", agent)
+        cl.user_session.set("mcp_session", session)
+        cl.user_session.set("mcp_tools", tools)
+        await cl.Message(content="✅ MCP connected and tools loaded.").send()
 
-    cl.user_session.set("mcp_session", session)
-    cl.user_session.set("mcp_tools", mcp_tools)
+    except Exception as e:
+        logger.exception("Failed to initialize MCP session")
+        await cl.Message(content=f"❌ MCP connection failed: {str(e)}").send()
+
 
 
 
