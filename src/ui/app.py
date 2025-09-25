@@ -34,9 +34,16 @@ chat_model = get_chat_model(
 async def on_chat_start():
     cl.user_session.set("chat_messages", [])
     await cl.Message(
-        content="👋 Welcome to the **OptimNow FinOps Assistant**!\n\n"
-        "Ask me about your cloud costs, anomalies, savings plans, or even request a chart or diagram."
+        content=(
+            "👋 Welcome to OptimNow FinOps Assistant.\n\n"
+            "You can:\n"
+            "- Analyze AWS costs (via MCP)\n"
+            "- Detect anomalies and usage trends\n"
+            "- Generate charts and diagrams\n\n"
+            "Try asking: *'Show me cost trends for the last 6 months'*."
+        )
     ).send()
+
 
 
 @cl.on_mcp_connect  # type: ignore
