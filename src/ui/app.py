@@ -1,6 +1,5 @@
 from dotenv import load_dotenv
 load_dotenv()  # loads AWS keys and other vars from .env
-
 import chainlit as cl
 import os
 import sys
@@ -28,6 +27,12 @@ chat_model = get_chat_model(
     thinking_config=None,
     client=bedrock_client,
 )
+
+# 🔎 Debug helper
+def log_session_state(label: str):
+    mcp_session = cl.user_session.get("mcp_session")
+    tools = cl.user_session.get("mcp_tools")
+    logger.debug(f"[{label}] MCP session={mcp_session}, tools={tools}")
 
 
 @cl.on_chat_start
@@ -91,6 +96,7 @@ async def on_chat_start():
 async def on_mcp(connection: McpConnection, session: ClientSession) -> None:
     """Called when an MCP connection is established."""
     try:
+        logger.debug("🚀 MCP connection established")
         await session.initialize()
         tools = await load_mcp_tools(session)
 
@@ -141,6 +147,7 @@ async def on_mcp(connection: McpConnection, session: ClientSession) -> None:
 async def on_mcp_disconnect(name: str, session: ClientSession) -> None:
     """Called when an MCP connection is terminated."""
     if isinstance(cl.user_session.get("mcp_session"), ClientSession):
+        logger.debug(f"🔌 MCP disconnected: {name}")
         await session.__aexit__(None, None, None)
         cl.user_session.set("mcp_session", None)
         cl.user_session.set("mcp_name", None)
