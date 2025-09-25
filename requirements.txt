@@ -1,0 +1,13 @@
+# requirements.txt for Chainlit UI
+chainlit==0.7.700
+
+# Chainlit dependencies (pinned to what Chainlit expects)
+httpx==0.24.1
+uvicorn==0.23.2
+python-multipart==0.0.6
+anyio==3.7.1
+
+# Optional utils (for charts, images, dataframes)
+altair==5.3.0
+pandas==2.2.2
+pillow==10.4.0
