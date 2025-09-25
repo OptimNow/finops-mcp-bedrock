@@ -15,6 +15,8 @@ from langgraph.graph.state import CompiledStateGraph
 from langgraph.prebuilt import create_react_agent
 
 from chainlit.mcp import McpConnection
+# Explicitly enable MCP support (sometimes needed in custom apps)
+cl.enable_mcp = True
 from mcp import ClientSession
 
 from src.tools.visual import titan_image_generate, render_vega_lite_png
@@ -72,6 +74,7 @@ def base_tools():
 @cl.on_chat_start
 async def on_chat_start():
     cl.user_session.set("chat_messages", [])
+    logger.info("🔌 MCP JSON loaded from .chainlit/mcp.json")
 
     # Initialize with base tools only
     agent = build_agent(base_tools())
