@@ -33,6 +33,34 @@ chat_model = get_chat_model(
 @cl.on_chat_start
 async def on_chat_start():
     cl.user_session.set("chat_messages", [])
+
+    # ---- Base tools (without MCP) ----
+    tools = [
+        StructuredTool.from_function(
+            func=titan_image_generate,
+            name="titan_image_generate",
+            description="Generate an image with Amazon Titan Image Generator v2."
+        ),
+        StructuredTool.from_function(
+            func=render_vega_lite_png,
+            name="render_vega_lite_png",
+            description="Render a Vega-Lite spec (JSON object) to a PNG."
+        ),
+    ]
+
+    # ---- Create initial agent with just local tools ----
+    agent = create_react_agent(
+        chat_model,
+        tools,
+        prompt=(
+            "You are a helpful Cloud FinOps assistant.\n"
+            "Use available tools for image generation and chart rendering.\n"
+            "If MCP servers are available, more tools will be added."
+        ),
+    )
+
+    cl.user_session.set("agent", agent)
+
     await cl.Message(
         content=(
             "👋 Welcome to OptimNow FinOps Assistant.\n\n"
@@ -46,50 +74,21 @@ async def on_chat_start():
 
 
 
-@cl.on_mcp_connect  # type: ignore
+
+@cl.on_mcp_connect
 async def on_mcp(connection: McpConnection, session: ClientSession) -> None:
-    """Called when an MCP connection is established."""
     await session.initialize()
-    tools = await load_mcp_tools(session)
+    mcp_tools = await load_mcp_tools(session)
 
-    # ---- Local tools (image gen + vega-lite renderer) ----
-    tools += [
-        StructuredTool.from_function(
-            func=titan_image_generate,
-            name="titan_image_generate",
-            description=(
-                "Generate an image with Amazon Titan Image Generator v2. "
-                "Inputs: prompt (str), width (int, default 1024), height (int, default 1024), "
-                "cfg_scale (float, default 7.5), steps (int, default 30), negative_prompt (str, optional). "
-                "Returns a local PNG file path."
-            ),
-        ),
-        StructuredTool.from_function(
-            func=render_vega_lite_png,
-            name="render_vega_lite_png",
-            description=(
-                "Render a Vega-Lite spec (JSON object) to a PNG and return the file path. "
-                "Use this for charts/graphs instead of image-generation models."
-            ),
-        ),
-    ]
+    # Extend existing tools
+    agent = cl.user_session.get("agent")
+    if agent:
+        agent.tools.extend(mcp_tools)  # Add MCP tools dynamically
+        cl.user_session.set("agent", agent)
 
-    agent = create_react_agent(
-        chat_model,
-        tools,
-        prompt=(
-            "You are a helpful Cloud FinOps assistant.\n"
-            "- For image UNDERSTANDING: describe/answer directly from the user-provided image.\n"
-            "- For image GENERATION (illustrations, thumbnails): call the tool titan_image_generate.\n"
-            "- For CHARTS/GRAPHS: output a minimal Vega-Lite JSON spec and then call render_vega_lite_png with that spec.\n"
-            "- For ARCHITECTURE/DIAGRAMS: output Markdown with a fenced code block using ```mermaid ... ```.\n"
-            "Never ask the user to run tools manually; select and call them yourself."
-        ),
-    )
-
-    cl.user_session.set("agent", agent)
     cl.user_session.set("mcp_session", session)
-    cl.user_session.set("mcp_tools", tools)
+    cl.user_session.set("mcp_tools", mcp_tools)
+
 
 
 @cl.on_mcp_disconnect  # type: ignore
