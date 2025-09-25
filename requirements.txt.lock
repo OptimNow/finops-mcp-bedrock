@@ -1,3 +1,7 @@
+altair==5.3.0
+vl-convert-python==1.8.0
+
+
 # Core runtime
 chainlit==1.0.200
 langchain==0.3.7
