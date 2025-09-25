@@ -1,3 +1,6 @@
+from dotenv import load_dotenv
+load_dotenv()  # loads AWS keys and other vars from .env
+
 import chainlit as cl
 import os
 import sys
