@@ -61,6 +61,18 @@ async def on_chat_start():
 
     cl.user_session.set("agent", agent)
 
+    # Check MCP tools availability
+    mcp_tools = cl.user_session.get("mcp_tools")
+    if not mcp_tools:
+        await cl.Message(
+            content=(
+                "👋 Welcome to the **OptimNow FinOps Assistant**!\n\n"
+                "⚠️ MCP tools are not connected yet. Please ensure your MCP server is running "
+                "and check `.chainlit/mcp.json`."
+            )
+        ).send()
+        return
+        
     await cl.Message(
         content=(
             "👋 Welcome to OptimNow FinOps Assistant.\n\n"
