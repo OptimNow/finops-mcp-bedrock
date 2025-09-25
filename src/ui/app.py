@@ -1,25 +1,32 @@
 from dotenv import load_dotenv
 load_dotenv()  # loads AWS keys and other vars from .env
-import chainlit as cl
+
 import os
 import sys
+import chainlit as cl
+from loguru import logger
+from typing import cast
+
 from langchain.tools import StructuredTool
-from src.tools.visual import titan_image_generate, render_vega_lite_png
-from chainlit.mcp import McpConnection
 from langchain_core.messages import AIMessageChunk
 from langchain_core.runnables import RunnableConfig
 from langchain_mcp_adapters.tools import load_mcp_tools
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.prebuilt import create_react_agent
-from loguru import logger
+
+from chainlit.mcp import McpConnection
 from mcp import ClientSession
+
+from src.tools.visual import titan_image_generate, render_vega_lite_png
 from src.utils.bedrock import get_bedrock_client, get_chat_model
 from src.utils.models import InferenceConfig, ModelId
-from typing import cast
 
+
+# ----------------- Logging -----------------
 logger.remove()
-logger.add(sys.stderr, level=os.getenv("LOG_LEVEL", "ERROR"))
+logger.add(sys.stderr, level=os.getenv("LOG_LEVEL", "DEBUG"))
 
+# ----------------- Bedrock Client -----------------
 bedrock_client = get_bedrock_client()
 chat_model = get_chat_model(
     model_id=ModelId.ANTHROPIC_CLAUDE_3_5_SONNET,
@@ -28,68 +35,71 @@ chat_model = get_chat_model(
     client=bedrock_client,
 )
 
-# 🔎 Debug helper
-def log_session_state(label: str):
-    mcp_session = cl.user_session.get("mcp_session")
-    tools = cl.user_session.get("mcp_tools")
-    logger.debug(f"[{label}] MCP session={mcp_session}, tools={tools}")
 
-
-@cl.on_chat_start
-async def on_chat_start():
-    cl.user_session.set("chat_messages", [])
-
-    # ---- Base tools (without MCP) ----
-    tools = [
-        StructuredTool.from_function(
-            func=titan_image_generate,
-            name="titan_image_generate",
-            description="Generate an image with Amazon Titan Image Generator v2."
-        ),
-        StructuredTool.from_function(
-            func=render_vega_lite_png,
-            name="render_vega_lite_png",
-            description="Render a Vega-Lite spec (JSON object) to a PNG."
-        ),
-    ]
-
-    # ---- Create initial agent with just local tools ----
-    agent = create_react_agent(
+# ----------------- Helper -----------------
+def build_agent(tools):
+    """Create a React agent with given tools."""
+    return create_react_agent(
         chat_model,
         tools,
         prompt=(
             "You are a helpful Cloud FinOps assistant.\n"
-            "Use available tools for image generation and chart rendering.\n"
-            "If MCP servers are available, more tools will be added."
+            "- For IMAGE GENERATION: use titan_image_generate.\n"
+            "- For CHARTS/GRAPHS: use render_vega_lite_png.\n"
+            "- For DIAGRAMS: output mermaid Markdown.\n"
+            "Never ask the user to run tools manually."
         ),
     )
 
+
+def base_tools():
+    """Always-available local tools."""
+    return [
+        StructuredTool.from_function(
+            func=titan_image_generate,
+            name="titan_image_generate",
+            description="Generate an image with Amazon Titan Image Generator v2.",
+        ),
+        StructuredTool.from_function(
+            func=render_vega_lite_png,
+            name="render_vega_lite_png",
+            description="Render a Vega-Lite spec (JSON object) to a PNG file.",
+        ),
+    ]
+
+
+# ----------------- Chat Lifecycle -----------------
+@cl.on_chat_start
+async def on_chat_start():
+    cl.user_session.set("chat_messages", [])
+
+    # Initialize with base tools only
+    agent = build_agent(base_tools())
     cl.user_session.set("agent", agent)
 
-    # Check MCP tools availability
+    # Wait briefly for MCP to connect
+    await cl.sleep(2)
     mcp_tools = cl.user_session.get("mcp_tools")
+
     if not mcp_tools:
         await cl.Message(
             content=(
                 "👋 Welcome to the **OptimNow FinOps Assistant**!\n\n"
-                "⚠️ MCP tools are not connected yet. Please ensure your MCP server is running "
-                "and check `.chainlit/mcp.json`."
+                "⚠️ MCP tools are not connected yet.\n"
+                "Please ensure your MCP server is running and check `.chainlit/mcp.json`."
             )
         ).send()
-        return
-        
-    await cl.Message(
-        content=(
-            "👋 Welcome to OptimNow FinOps Assistant.\n\n"
-            "You can:\n"
-            "- Analyze AWS costs (via MCP)\n"
-            "- Detect anomalies and usage trends\n"
-            "- Generate charts and diagrams\n\n"
-            "Try asking: *'Show me cost trends for the last 6 months'*."
-        )
-    ).send()
-
-
+    else:
+        await cl.Message(
+            content=(
+                "👋 Welcome to the **OptimNow FinOps Assistant**!\n\n"
+                "✅ MCP tools connected. You can now:\n"
+                "- Analyze AWS costs\n"
+                "- Detect anomalies\n"
+                "- Generate charts and diagrams\n\n"
+                "Try asking: *'Show me cost trends for the last 6 months'*."
+            )
+        ).send()
 
 
 @cl.on_mcp_connect  # type: ignore
@@ -106,41 +116,20 @@ async def on_mcp(connection: McpConnection, session: ClientSession) -> None:
         else:
             logger.info(f"Loaded {len(tools)} MCP tools.")
 
-        # ---- Local tools (image gen + vega-lite renderer) ----
-        tools += [
-            StructuredTool.from_function(
-                func=titan_image_generate,
-                name="titan_image_generate",
-                description="Generate an image with Amazon Titan Image Generator v2.",
-            ),
-            StructuredTool.from_function(
-                func=render_vega_lite_png,
-                name="render_vega_lite_png",
-                description="Render a Vega-Lite spec (JSON object) to a PNG file.",
-            ),
-        ]
+        # Add local tools too
+        tools += base_tools()
 
-        agent = create_react_agent(
-            chat_model,
-            tools,
-            prompt=(
-                "You are a helpful Cloud FinOps assistant.\n"
-                "- For image GENERATION: use titan_image_generate.\n"
-                "- For CHARTS/GRAPHS: use render_vega_lite_png.\n"
-                "- For diagrams: output mermaid Markdown.\n"
-            ),
-        )
-
+        # Rebuild agent with MCP tools
+        agent = build_agent(tools)
         cl.user_session.set("agent", agent)
         cl.user_session.set("mcp_session", session)
         cl.user_session.set("mcp_tools", tools)
+
         await cl.Message(content="✅ MCP connected and tools loaded.").send()
 
     except Exception as e:
         logger.exception("Failed to initialize MCP session")
         await cl.Message(content=f"❌ MCP connection failed: {str(e)}").send()
-
-
 
 
 @cl.on_mcp_disconnect  # type: ignore
@@ -157,18 +146,18 @@ async def on_mcp_disconnect(name: str, session: ClientSession) -> None:
 @cl.on_message
 async def on_message(message: cl.Message):
     """Process user messages and generate responses using the Bedrock model."""
-    config = RunnableConfig(configurable={'thread_id': cl.context.session.id})
-    agent = cast(CompiledStateGraph, cl.user_session.get('agent'))
+    config = RunnableConfig(configurable={"thread_id": cl.context.session.id})
+    agent = cast(CompiledStateGraph, cl.user_session.get("agent"))
+
     if not agent:
-        await cl.Message(content='Error: Chat model not initialized.').send()
+        await cl.Message(content="❌ Error: Chat model not initialized.").send()
         return
 
     cb = cl.AsyncLangchainCallbackHandler()
 
     try:
-        # Start a streaming response
         response_message = cl.Message(content="")
-        config['callbacks'] = [cb]
+        config["callbacks"] = [cb]
 
         async for msg, metadata in agent.astream(
             {"messages": message.content},
@@ -176,11 +165,8 @@ async def on_message(message: cl.Message):
             config=config,
         ):
             if isinstance(msg, AIMessageChunk) and msg.content:
-                # Handle plain string tokens
                 if isinstance(msg.content, str):
                     await response_message.stream_token(msg.content)
-
-                # Handle structured LangChain outputs with {"type": "text"}
                 elif (
                     isinstance(msg.content, list)
                     and len(msg.content) > 0
@@ -190,28 +176,22 @@ async def on_message(message: cl.Message):
                 ):
                     await response_message.stream_token(msg.content[0]["text"])
 
-        # Finalize content
         text = response_message.content or ""
 
-        # --- Check if the output is a PNG path ---
+        # Handle images
         if isinstance(text, str) and text.strip().endswith(".png") and "outputs/" in text:
-            import os
-            image_path = text.strip()
-            if os.path.exists(image_path):
+            if os.path.exists(text.strip()):
                 await cl.Image(
-                    path=image_path,
-                    name=os.path.basename(image_path),
-                    display="inline"
+                    path=text.strip(),
+                    name=os.path.basename(text.strip()),
+                    display="inline",
                 ).send()
             else:
-                await cl.Message(content=f"⚠️ Could not find generated image at {image_path}").send()
+                await cl.Message(content=f"⚠️ Could not find generated image at {text.strip()}").send()
         else:
-            # Send only once (no duplicate send)
             if text.strip():
                 await response_message.send()
 
     except Exception as e:
-        err_msg = cl.Message(content=f"❌ Error: {str(e)}\n{tb.format_exc()}")
-        await err_msg.send()
-
-
+        import traceback as tb
+        await cl.Message(content=f"❌ Error: {str(e)}\n{tb.format_exc()}").send()
