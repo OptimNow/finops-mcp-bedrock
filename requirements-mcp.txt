@@ -1,0 +1,9 @@
+# requirements-mcp.txt for MCP servers
+mcp>=1.14.0
+git+https://github.com/langchain-ai/langchain-mcp-adapters.git
+
+# MCP dependencies (latest, no pinning here)
+httpx>=0.27.1
+uvicorn>=0.31.1
+python-multipart>=0.0.9
+anyio>=4.5
