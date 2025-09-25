@@ -5,7 +5,7 @@
       "command": "uvx",
       "args": ["awslabs.billing-cost-management-mcp-server@latest"],
       "env": {
-        "AWS_REGION": "eu-east-1",
+        "AWS_REGION": "us-east-1",
         "AWS_PROFILE": "default"
       }
     }
