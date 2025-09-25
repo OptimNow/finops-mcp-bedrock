@@ -2,7 +2,7 @@
   "servers": {
     "aws-billing": {
       "type": "stdio",
-      "command": "uvx",
+     "command": "/home/ec2-user/.local/bin/uvx",
       "args": ["awslabs.billing-cost-management-mcp-server@latest"],
       "env": {
         "AWS_REGION": "us-east-1",
