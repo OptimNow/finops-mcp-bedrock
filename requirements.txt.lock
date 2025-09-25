@@ -1,0 +1,29 @@
+# Core runtime
+chainlit==1.0.200
+langchain==0.3.7
+langchain-core==0.3.76
+langsmith==0.4.31
+
+# MCP stack
+mcp==1.14.2.dev8+71889d7
+langchain-mcp-adapters==0.1.10
+
+# Compatible dependencies (matching Chainlit + MCP)
+anyio==4.11.0
+httpx==0.28.1
+httpcore==1.0.9
+python-multipart==0.0.20
+uvicorn==0.37.0
+h11==0.16.0
+sse-starlette==3.0.2
+
+# Data and validation
+pydantic==2.11.9
+pydantic-core==2.33.2
+pydantic-settings==2.11.0
+jsonschema==4.25.1
+PyYAML==6.0.2
+
+# Utilities
+tenacity==9.1.2
+typing-extensions==4.15.0
