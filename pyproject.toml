@@ -85,6 +85,6 @@ version = "0.8.0"
 tag_format = "v$version"
 version_files = [
     "pyproject.toml:version",
-    "ai3_diagrams_expert/__init__.py:__version__"
+    "src/__init__.py:__version__"
 ]
 update_changelog_on_bump = true
