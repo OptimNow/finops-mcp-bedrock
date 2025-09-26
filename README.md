@@ -1,100 +1,56 @@
-<<<<<<< HEAD
-# finops-mcp-bedrock
-GenAI FinOps accelerator in chainlit on EC2 with LLM in Bedrock
-======= All below to be updated =====
-# Amazon Bedrock and MCP Server integration, the easy way
+# OptimNow FinOps Assistant (MCP + Bedrock + Chainlit)
 
-This project demonstrates how to integrate foundation models on Amazon Bedrock with Chainlit and MCP (Model Context Protocol) servers to create an interactive chat interface with tool-enhanced capabilities.
+This project is a **FinOps assistant** built on top of **AWS Bedrock**, **LangChain**, and the **Model Context Protocol (MCP)**.  
+It connects to external MCP servers (such as **AWS Billing & Cost Management**, Azure, and GCP) to query cloud costs and enrich the assistant with live data and tools.  
 
-## Project Overview
+The UI is powered by **Chainlit**, giving you a chat interface where you can:
+- Analyze AWS costs and usage through the AWS Billing MCP server  
+- Generate charts and graphs from cost data (Vega-Lite renderer)  
+- Create diagrams or images (Mermaid + Amazon Titan Image Generator v2)  
+- Extend the assistant with new MCP servers (Azure, GCP, etc.)  
 
-This sample application showcases:
+---
 
-- Integration with Amazon Bedrock using Anthropic Claude 3.5 Sonnet
-- A Chainlit web interface for conversational AI interactions
-- A custom Model Context Protocol (MCP) server that performs basic math operations
-- Streaming responses for a smooth user experience
-- LangChain integration with MCP adapters to connect external tools
-- LangGraph for creating a ReAct (Reasoning and Acting) agent that orchestrates tool use
+## ✅ What we’ve done so far
 
-## Prerequisites
+- Set up a self-contained **EC2 instance** with Python virtual environment.  
+- Installed and pinned correct versions of Chainlit, LangChain, MCP, and adapters.  
+- Added `.chainlit/mcp.json` to declare external MCP servers (e.g. AWS Billing).  
+- Integrated MCP connections inside `app.py`, so tools discovered via MCP are dynamically loaded into the assistant.  
+- Added `.env` loader for credentials (AWS_REGION, AWS_PROFILE, etc.).  
+- Debugged compatibility issues between Chainlit and MCP, with logging enabled.  
 
-Before getting started, ensure you have:
+---
 
-- **AWS Account**: You'll need an AWS account with Bedrock access
-- **Bedrock Access**: Ensure your AWS account has access to the Anthropic Claude 3.7 Sonnet model
-- **AWS CLI**: Configured with appropriate credentials and permissions
-- **Python 3.13+**: This project requires Python 3.13 or newer
-- **UV**: For dependency management and building (install with `pip install uv`)
+## 📖 Tutorial / Installation
 
-## Installation
+Follow the step-by-step tutorial provided in the [`docs/INSTALL.md`](docs/INSTALL.md) file.  
+It explains how to:
 
-1. Clone the repository:
+1. Prepare the Python environment  
+2. Install dependencies from `requirements.txt`  
+3. Configure `.env` with your AWS credentials and region  
+4. Run the AWS Billing MCP server  
+5. Start Chainlit and connect to the assistant  
 
-   ```bash
-   git clone https://github.com/aws-samples/sample-bedrock-mcp.git
-   cd sample-bedrock-chainlit-mcp
-   ```
+---
 
-2. Create a virtual environment and install dependencies using UV:
+## 🚀 Usage
 
-   ```bash
-   uv sync --all-groups
-   ```
-
-3. Configure AWS credentials (if not already done):
-
-   ```bash
-   aws configure
-   ```
-
-## Building from Source
-
-To build the project from source using UV:
-
-1. Build the package:
-
-   ```bash
-   uv build
-   ```
-
-This will create distribution files in the `dist/` directory, including the wheel file `dist/sample_bedrock_chainlit_mcp-0.1.0-py3-none-any.whl` that can be installed or used directly as the MCP server.
-
-## Usage Guide
-
-### Starting the Chainlit Application
-
-To start the Chainlit application:
+From your EC2 instance:
 
 ```bash
-chainlit run src/ui/app.py
-```
+source .venv/bin/activate
+LOG_LEVEL=DEBUG CHAINLIT_MCP_CONFIG=.chainlit/mcp.json \
+chainlit run src/ui/app.py --host 0.0.0.0 --port 8000
+Then open the app in your browser at:
 
-This will launch a web server (typically at <http://localhost:8000>) with the chat interface.
+cpp
+Copy code
+http://<your-ec2-public-ip>:8000
+##🔧 Next steps##
+Add Azure MCP and GCP MCP servers to .chainlit/mcp.json
 
-### Setting up the MCP Server
-
-The Math MCP server needs to be connected to provide calculation capabilities:
-
-1. In the Chainlit web interface, look for the small plug icon under the chat text input element
-2. Click on it to open the MCP connection dialog
-3. Enter the following details:
-   - **Name**: `math`
-   - **Command**: `uvx dist/sample_bedrock_chainlit_mcp-0.1.0-py3-none-any.whl`
-   - **Type**: default (stdio)
-4. Click "Confirm"
-
-A successful connection will be indicated in the interface, and the math tools will become available to the Claude model.
-
-### Example Usage
-
-Once the Chainlit application is running and the MCP server is connected, you can ask mathematical questions like:
-
-- "What's (3 + 5) x 12?"
-- "Can you calculate 144 divided by 12?"
-- "If I have 7 apples and get 9 more, then give 4 away, how many do I have left?"
-
-The model will use the MCP tools to perform the calculations and return the results.
 
 ## Technical Implementation
 
@@ -104,7 +60,7 @@ This project uses LangGraph to create a ReAct agent that follows this workflow:
 
 1. The agent receives user input via the Chainlit interface
 2. It analyzes the input to determine if mathematical operations are needed
-3. When math is required, it uses the MCP tools to perform calculations
+3. When cloud billing data is required, it uses the MCP tools to perform calculations
 4. Results are returned to the user with a detailed explanation
 
 The ReAct agent is created using `langgraph.prebuilt.create_react_agent()`, which orchestrates the reasoning and tool-use process.
@@ -119,16 +75,6 @@ The `langchain-mcp-adapters` package serves as a bridge between LangChain and MC
 
 This adapter pattern allows the application to easily incorporate additional MCP servers with different capabilities in the future.
 
-## MCP Server Details
-
-This project includes a simple MCP server with the following arithmetic operations:
-
-- **add**: Add two numbers together
-- **subtract**: Subtract one number from another
-- **multiply**: Multiply two numbers together
-- **divide**: Divide one number by another
-
-These operations are exposed as tools that the Claude model can use when prompted with mathematical questions.
 
 ## Development
 
