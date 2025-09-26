@@ -24,7 +24,11 @@ The UI is powered by **Chainlit**, giving you a chat interface where you can:
 
 ## 📖 Tutorial / Installation
 
-Follow the step-by-step tutorial provided in the [`docs/INSTALL.md`](docs/INSTALL.md) file.  
+### Prerequisites
+
+The Chainlit configuration expects an `uvx` executable to be available in your `PATH` so it can launch the AWS Billing MCP server defined in `.chainlit/mcp.json`. Install the [`uv`](https://github.com/astral-sh/uv) package (which provides the `uvx` shim) following the upstream instructions for your platform, or provide an equivalent wrapper script checked into this repository and ensure it is executable and discoverable via `PATH`.
+
+Follow the step-by-step tutorial provided in the [`docs/INSTALL.md`](docs/INSTALL.md) file.
 It explains how to:
 
 1. Prepare the Python environment  
