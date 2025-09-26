@@ -2,8 +2,8 @@
   "servers": {
     "aws-billing": {
       "type": "stdio",
-     "command": "/home/ec2-user/.local/bin/uvx",
-      "args": ["awslabs.billing-cost-management-mcp-server@latest"],
+      "command": "/home/ec2-user/sample-bedrock-mcp/.venv/bin/python",
+      "args": ["-m", "uvx", "awslabs.billing-cost-management-mcp-server@latest"],
       "env": {
         "AWS_REGION": "us-east-1",
         "AWS_PROFILE": "default"
