@@ -80,29 +80,9 @@ async def on_chat_start():
     agent = build_agent(base_tools())
     cl.user_session.set("agent", agent)
 
-    # Wait briefly for MCP to connect
-    await cl.sleep(2)
-    mcp_tools = cl.user_session.get("mcp_tools")
-
-    if not mcp_tools:
-        await cl.Message(
-            content=(
-                "👋 Welcome to the **OptimNow FinOps Assistant**!\n\n"
-                "⚠️ MCP tools are not connected yet.\n"
-                "Please ensure your MCP server is running and check `.chainlit/mcp.json`."
-            )
-        ).send()
-    else:
-        await cl.Message(
-            content=(
-                "👋 Welcome to the **OptimNow FinOps Assistant**!\n\n"
-                "✅ MCP tools connected. You can now:\n"
-                "- Analyze AWS costs\n"
-                "- Detect anomalies\n"
-                "- Generate charts and diagrams\n\n"
-                "Try asking: *'Show me cost trends for the last 6 months'*."
-            )
-        ).send()
+    await cl.Message(
+        content="👋 Welcome to the **OptimNow FinOps Assistant**!"
+    ).send()
 
 
 @cl.on_mcp_connect  # type: ignore
@@ -115,7 +95,6 @@ async def on_mcp(connection: McpConnection, session: ClientSession) -> None:
 
         if not tools:
             logger.error("No MCP tools loaded from session.")
-            await cl.Message(content="⚠️ MCP connected, but no tools available.").send()
         else:
             logger.info(f"Loaded {len(tools)} MCP tools.")
 
@@ -127,8 +106,6 @@ async def on_mcp(connection: McpConnection, session: ClientSession) -> None:
         cl.user_session.set("agent", agent)
         cl.user_session.set("mcp_session", session)
         cl.user_session.set("mcp_tools", tools)
-
-        await cl.Message(content="✅ MCP connected and tools loaded.").send()
 
     except Exception as e:
         logger.exception("Failed to initialize MCP session")
