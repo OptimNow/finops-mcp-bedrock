@@ -3,9 +3,7 @@ from typing import Union
 from typing import Optional, Dict, Any
 import altair as alt
 import base64, io, json, os
-from PIL import Image
 import vl_convert as vlc
-import boto3
 
 # ---------- Titan Image Gen (v2) ----------
 def titan_image_generate(
@@ -16,6 +14,9 @@ def titan_image_generate(
     steps: int = 30,
     negative_prompt: Optional[str] = None
 ) -> str:
+    import boto3
+    from PIL import Image
+
     """
     Generate an image with Amazon Titan Image Generator v2.
     Returns the local file path to the PNG.
@@ -70,6 +71,11 @@ def render_vega_lite_png(spec: Union[str, dict], output_path: str = "outputs/cha
         spec.pop("$schema", None)
 
     chart = alt.Chart.from_dict(spec)
+
+    output_dir = os.path.dirname(output_path)
+    if output_dir:
+        os.makedirs(output_dir, exist_ok=True)
+
     chart.save(output_path, format="png")
     return output_path
 
