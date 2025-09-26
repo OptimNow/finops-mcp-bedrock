@@ -1,95 +1,57 @@
-/* ===== OptimNow Chainlit Custom UI ===== */
+/* Chainlit customizations with neutral styling */
 
-/* Global background */
 body {
-  background: #fdfcf7; /* cream white */
   font-family: "Inter", sans-serif;
-  color: #000000;
+  background: #f8f9fb;
+  color: #1f2933;
 }
 
-/* Header logo/banner */
 header {
-  background: #7FFF00 !important; /* chartreuse */
-  padding: 10px;
-}
-header img {
-  max-height: 40px;
+  background: #ffffff !important;
+  border-bottom: 1px solid #e5e7eb !important;
+  padding: 8px 16px;
 }
 
-/* Hide the default Chainlit logo (both text + icon) */
-.cl-logo, 
-.cl-logo svg, 
-.cl-logo-text {
-  display: none !important;
+.cl-welcome {
+  background: linear-gradient(135deg, #ffffff 0%, #f2f4f8 100%);
 }
 
-/* Inject OptimNow logo in header */
-header::before {
-  content: url("/public/optimnow_logo.png");
-  display: block;
-  height: 50px;
-  margin: 5px 0;
+.cl-message.ai {
+  background: #f4f6fb !important;
+  border-left: 4px solid #4b6bfb !important;
+  border-radius: 12px;
+  padding: 12px;
 }
 
-/* Hide Chainlit splash logo/text completely */
-.cl-welcome-logo,
-.cl-welcome-logo svg,
-.cl-welcome-logo img {
-  display: none !important;
+.cl-message.user {
+  background: #ffffff !important;
+  border-left: 4px solid #6b7280 !important;
+  border-radius: 12px;
+  padding: 12px;
 }
 
-/* Optional: custom welcome banner */
-.cl-welcome::before {
-  content: url("/public/optimnow_logo.png");
-  display: block;
-  margin: 40px auto;
-  max-height: 120px;
-}
-
-
-
-/* Chat input box */
 .cl-input {
   border-radius: 12px !important;
-  border: 2px solid #7FFF00 !important; /* chartreuse border */
-  background: #ffffff;
-  font-size: 16px;
+  border: 1px solid #d1d5db !important;
+  box-shadow: none !important;
 }
 
-/* Assistant (AI) messages */
-.cl-message.ai {
-  background: #f5fff0 !important; /* very light green */
-  border-left: 4px solid #7FFF00 !important;
-  border-radius: 12px;
-  padding: 10px;
-}
-
-/* User messages */
-.cl-message.user {
-  background: #eaf3ff !important; /* light blue */
-  border-left: 4px solid #0066ff !important;
-  border-radius: 12px;
-  padding: 10px;
-}
-
-/* Buttons */
 button {
-  background-color: #7FFF00 !important;
-  color: #000000 !important;
+  background-color: #4b6bfb !important;
+  color: #ffffff !important;
   border-radius: 8px !important;
   font-weight: 600;
 }
+
 button:hover {
-  background-color: #66cc00 !important;
+  background-color: #3a55d4 !important;
 }
 
-/* Sidebar */
 .cl-sidebar {
-  background: #f9faf9 !important;
-  border-right: 2px solid #7FFF00 !important;
+  background: #f9fafb !important;
+  border-right: 1px solid #e5e7eb !important;
 }
 
-/* Links */
 a {
-  color: #0066ff !important;
+  color: #3a55d4 !important;
 }
