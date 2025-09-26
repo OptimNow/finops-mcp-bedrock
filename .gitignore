@@ -289,7 +289,8 @@ ipython_config.py
 
 bandit_report.txt
 semgrep_report.json
-.chainlit/
+.chainlit/*
+!.chainlit/config.toml
 
 # Generated files
 outputs/
