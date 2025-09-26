@@ -1,57 +1,207 @@
-/* Chainlit customizations with neutral styling */
+/* OptimNow Chainlit theme */
+:root {
+  --brand-primary: #ace849;
+  --brand-primary-dark: #93c33d;
+  --brand-background: #f4f4f4;
+  --brand-surface: #ffffff;
+  --brand-surface-muted: #f8f8f8;
+  --brand-border: #c1c1c1;
+  --brand-text: #2c2c2c;
+  --brand-text-muted: #5a5a5a;
+  --brand-dark: #2c2c2c;
+}
 
 body {
-  font-family: "Inter", sans-serif;
-  background: #f8f9fb;
-  color: #1f2933;
+  font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
+  background: var(--brand-background);
+  color: var(--brand-text);
 }
 
 header {
-  background: #ffffff !important;
-  border-bottom: 1px solid #e5e7eb !important;
-  padding: 8px 16px;
+  background: var(--brand-surface) !important;
+  border-bottom: 1px solid var(--brand-border) !important;
+  box-shadow: 0 2px 8px rgba(44, 44, 44, 0.08);
+  padding: 8px 20px;
+}
+
+header .cl-header__content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+header .cl-logo {
+  display: flex !important;
+  align-items: center;
+  gap: 12px;
+}
+
+header .cl-logo::before,
+header .cl-logo::after {
+  content: "";
+  display: block;
+  width: 32px;
+  height: 32px;
+  background-size: contain;
+  background-repeat: no-repeat;
+}
+
+header .cl-logo::before {
+  background-image: url("/public/favicon.ico");
+  filter: drop-shadow(0 2px 4px rgba(44, 44, 44, 0.2));
+}
+
+header .cl-logo::after {
+  width: 140px;
+  height: 36px;
+  background-image: url("/public/optimnow_logo.png");
+}
+
+header .cl-logo img,
+header .cl-logo svg {
+  display: none !important;
 }
 
 .cl-welcome {
-  background: linear-gradient(135deg, #ffffff 0%, #f2f4f8 100%);
+  background: linear-gradient(140deg, var(--brand-surface) 0%, var(--brand-surface-muted) 100%);
+  border: 1px solid var(--brand-border);
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(44, 44, 44, 0.06);
+  color: var(--brand-text);
 }
 
-.cl-message.ai {
-  background: #f4f6fb !important;
-  border-left: 4px solid #4b6bfb !important;
-  border-radius: 12px;
-  padding: 12px;
+.cl-welcome h1,
+.cl-welcome h2,
+.cl-welcome h3 {
+  color: var(--brand-text);
 }
 
-.cl-message.user {
-  background: #ffffff !important;
-  border-left: 4px solid #6b7280 !important;
-  border-radius: 12px;
-  padding: 12px;
-}
-
-.cl-input {
-  border-radius: 12px !important;
-  border: 1px solid #d1d5db !important;
-  box-shadow: none !important;
-}
-
-button {
-  background-color: #4b6bfb !important;
-  color: #ffffff !important;
-  border-radius: 8px !important;
-  font-weight: 600;
-}
-
-button:hover {
-  background-color: #3a55d4 !important;
+.cl-main {
+  background: transparent !important;
 }
 
 .cl-sidebar {
-  background: #f9fafb !important;
-  border-right: 1px solid #e5e7eb !important;
+  background: var(--brand-surface) !important;
+  border-right: 1px solid var(--brand-border) !important;
 }
 
-a {
-  color: #3a55d4 !important;
+.cl-chat {
+  background: transparent !important;
+}
+
+.cl-message {
+  border-radius: 14px !important;
+  padding: 14px 16px !important;
+  border: 1px solid transparent;
+  box-shadow: 0 4px 12px rgba(44, 44, 44, 0.05);
+}
+
+.cl-message.ai {
+  background: var(--brand-surface) !important;
+  border-left: 4px solid var(--brand-primary) !important;
+}
+
+.cl-message.user {
+  background: var(--brand-surface-muted) !important;
+  border-left: 4px solid var(--brand-border) !important;
+}
+
+.cl-message pre,
+.cl-message code {
+  background: rgba(44, 44, 44, 0.08);
+  color: var(--brand-text);
+  border-radius: 8px;
+}
+
+.cl-input {
+  border-radius: 16px !important;
+  border: 1px solid var(--brand-border) !important;
+  background: var(--brand-surface) !important;
+  box-shadow: 0 4px 14px rgba(44, 44, 44, 0.08) !important;
+}
+
+textarea.cl-input {
+  color: var(--brand-text);
+}
+
+button,
+.cl-button,
+.cl-action-button {
+  background-color: var(--brand-primary) !important;
+  color: var(--brand-text) !important;
+  border-radius: 999px !important;
+  border: 1px solid var(--brand-primary-dark) !important;
+  font-weight: 600 !important;
+  text-transform: none !important;
+  padding: 10px 20px !important;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+button:hover,
+.cl-button:hover,
+.cl-action-button:hover {
+  background-color: var(--brand-primary-dark) !important;
+  box-shadow: 0 6px 16px rgba(172, 232, 73, 0.35);
+  transform: translateY(-1px);
+}
+
+button:disabled,
+.cl-button:disabled,
+.cl-action-button:disabled {
+  background-color: var(--brand-border) !important;
+  color: var(--brand-text-muted) !important;
+  border-color: var(--brand-border) !important;
+  box-shadow: none !important;
+}
+
+a,
+.cl-link {
+  color: var(--brand-primary-dark) !important;
+  font-weight: 600;
+}
+
+a:hover,
+.cl-link:hover {
+  color: var(--brand-primary) !important;
+}
+
+.cl-user-env {
+  background: var(--brand-surface-muted) !important;
+  border-radius: 12px;
+  border: 1px solid var(--brand-border) !important;
+}
+
+.cl-divider {
+  background: var(--brand-border) !important;
+}
+
+.cl-toast-success {
+  background: var(--brand-primary) !important;
+  color: var(--brand-text) !important;
+}
+
+.cl-toast-error {
+  background: #ff4d4f !important;
+  color: #ffffff !important;
+}
+
+.cl-toast-info {
+  background: var(--brand-dark) !important;
+  color: #ffffff !important;
+}
+
+/* Responsive tweaks */
+@media (max-width: 768px) {
+  header {
+    padding: 12px 16px;
+  }
+
+  header .cl-logo::after {
+    width: 120px;
+    height: 32px;
+  }
+
+  .cl-message {
+    border-radius: 12px !important;
+  }
 }
