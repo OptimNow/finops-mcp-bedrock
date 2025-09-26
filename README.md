@@ -43,13 +43,15 @@ From your EC2 instance:
 source .venv/bin/activate
 LOG_LEVEL=DEBUG CHAINLIT_MCP_CONFIG=.chainlit/mcp.json \
 chainlit run src/ui/app.py --host 0.0.0.0 --port 8000
+```
+
 Then open the app in your browser at:
 
-cpp
-Copy code
 http://<your-ec2-public-ip>:8000
-##🔧 Next steps##
-Add Azure MCP and GCP MCP servers to .chainlit/mcp.json
+
+## 🔧 Next steps
+
+Add Azure MCP and GCP MCP servers to `.chainlit/mcp.json`.
 
 
 ## Technical Implementation
@@ -91,4 +93,3 @@ To modify the MCP server or add new capabilities, edit the `src/mcp/server.py` f
 - If you encounter issues connecting to Bedrock, check your AWS credentials and ensure you have the necessary permissions.
 - For MCP connection issues, verify that the wheel file exists in the dist directory and that you're using the correct command in the Chainlit interface.
 - Check the logs in the terminal running the Chainlit application for detailed error messages. You can set the `LOG_LEVEL` environment variable to `DEBUG` to get more detailed logs.
->>>>>>> 580c474 (init)
