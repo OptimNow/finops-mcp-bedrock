@@ -296,3 +296,4 @@ semgrep_report.json
 outputs/
 
 .env
+.env
