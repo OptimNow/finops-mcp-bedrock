@@ -5,6 +5,7 @@ description = "FinOps assistant using AWS Bedrock (Titan/Nova), Chainlit, and AW
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "altair>=5.5.0",
     "boto3>=1.38.2",
     "chainlit>=2.5.5",
     "langchain>=0.3.24",
