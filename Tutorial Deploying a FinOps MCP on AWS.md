@@ -1,19 +1,77 @@
-# Work In Progress - Tutorial: Deploying a FinOps MCP on AWS
+# Tutorial: Deploying a FinOps MCP on AWS
 
 
 
-## 1. Introduction & Context
-
-- What is **MCP (Model Context Protocol)** and Why use it for **FinOps** (plugging cost/optimization tools directly into an LLM agent).
-- Why deploying an MCP on an EC2 instance?
-- Key building blocks:
-  - **Amazon Bedrock** (managed LLM),
-  - **Chainlit** (chat UI),
-  - **Billing & Cost Management MCP server** (FinOps tools).
+# Tutorial: Deploy a FinOps Chatbot on AWS EC2
 
 
 
-------
+# Tutorial: Deploy a FinOps Chatbot on AWS EC2
+
+## 1. Introduction
+
+### What You'll Build
+
+In this tutorial, you'll deploy an AI-powered FinOps assistant that allows you to analyze AWS costs using natural language. By the end, you'll have:
+
+- A **Chainlit chat interface** running on an EC2 instance
+- Integration with **Amazon Bedrock** (using Titan and Nova models)
+- Connection to the **AWS Billing & Cost Management MCP server** for cost analysis
+- **Data visualization capabilities** - generate charts, graphs, and diagrams from your cost data
+- A working chatbot that can answer questions like:
+  - "What were my AWS costs last month?"
+  - "Show me EC2 spending trends as a graph"
+  - "What are my top 5 cost drivers?"
+  - "Create a diagram showing my cost breakdown by service"
+
+
+
+### Why This Architecture?
+
+This tutorial uses:
+
+- **EC2 instance**: Provides a self-contained environment where all processing happens within your AWS boundaries - no data leaves your infrastructure
+- **Model Context Protocol (MCP)**: Enables the LLM to securely access AWS cost data through standardized tools
+- **Amazon Bedrock**: Provides managed access to foundation models (Titan, Nova) without using public LLMs or sending data to third-party services
+- **Chainlit**: Offers a ready-to-use chat interface without building a custom UI
+
+**Key security benefit**: Your billing data never leaves your EC2 instance. The LLM runs in Bedrock (within AWS), the MCP server runs locally on EC2, and all cost data stays within your AWS account boundaries.
+
+**Extensibility**: You can easily add more MCP servers to extend functionality:
+- Additional AWS services (Compute Optimizer, Trusted Advisor, CloudWatch)
+- Multi-cloud cost analysis (Azure Cost Management, GCP Billing)
+- Custom MCP servers for your specific FinOps workflows
+
+
+
+### Prerequisites
+
+Before starting, ensure you have:
+
+- **AWS Account** with billing data available
+- **AWS Console access** with permissions to:
+  - Launch EC2 instances
+  - Create IAM roles and policies
+  - Enable Bedrock model access
+- **SSH client** installed (Windows: PowerShell or PuTTY, Mac/Linux: built-in terminal)
+
+💡 **Don't worry if you're not familiar with command-line tools** - you can use AI assistants like Claude or ChatGPT to help you navigate Linux commands as you follow this tutorial.
+
+
+
+### Time & Cost Estimate
+
+- **Setup time**: 45-90 minutes (depending on your experience level)
+- **Monthly cost** (if instance runs 24/7):
+  - EC2 t3.small: ~$15-20/month
+  - Bedrock API usage: ~$5-10/month (depends on usage)
+  - Total: ~$20-30/month
+
+💡 **Cost-saving tip**: Stop the EC2 instance when not in use to reduce costs to ~$5-10/month.
+
+---
+
+
 
 ## 2. AWS Preparation
 
