@@ -1,7 +1,7 @@
 [project]
-name = "sample-bedrock-chainlit-mcp"
+name = "finops-mcp-bedrock"
 version = "0.1.0"
-description = "Sample code for using Amazon Bedrock with Chainlit and MCP servers"
+description = "FinOps assistant using AWS Bedrock (Titan/Nova), Chainlit, and AWS Billing MCP server for cloud cost analysis"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
