@@ -1,11 +1,3 @@
-# Tutorial: Deploying a FinOps MCP on AWS
-
-
-
-# Tutorial: Deploy a FinOps Chatbot on AWS EC2
-
-
-
 # Tutorial: Deploy a FinOps Chatbot on AWS EC2
 
 ## 1. Introduction
@@ -183,6 +175,7 @@ You need an SSH key pair to connect to your EC2 instance.
 5. Click **Create key pair** - the file will download automatically
 
 **Important**: 
+
 - Save the `.pem` file in a secure location
 - On Mac/Linux, set proper permissions: `chmod 400 MCPBedrockKP.pem`
 - On Windows, Windows will handle permissions automatically
@@ -204,139 +197,736 @@ Next, you'll use these to launch your EC2 instance.
 
 ---
 
-------
+
 
 ## 3. Launching the EC2 Instance
 
-- To run the Chainlit UI and MCP server, we need a small **Amazon Linux 2023** intstance, type `t3.small` (or larger), and a disk EBS of 20-30 GiB gp3 is sufficient.
-- Attach the **Key Pair**,  **IAM Role** and the **Security Group**.
-- Verify that the instance runs in the same region where Bedrock is enabled. (we will be using North Virginia all along this tutorial)
+Now you'll launch an EC2 instance that will host your FinOps chatbot. This instance will run Amazon Linux 2023 and use the IAM role and security group you created earlier.
 
+### Step 3.1: Start the Launch Process
 
+1. In the **EC2 Console**, click **Instances** → **Launch instances**
+2. Name your instance: **`FinOps-MCP-Chatbot`**
+
+---
+
+### Step 3.2: Choose AMI and Instance Type
+
+**Application and OS Images (AMI):**
+1. Select **Amazon Linux 2023 AMI**
+2. Architecture: **64-bit (x86)**
+3. Leave the default AMI (usually the top result marked "Free tier eligible")
+
+**Instance type:**
+1. Select **t3.small**
+   - 2 vCPUs, 2 GiB RAM
+   - Cost: ~$0.0208/hour (~$15/month if running 24/7)
+   - Sufficient for the Chainlit UI and MCP server
+
+💡 **Can I use t2.micro (free tier)?** No, t2.micro (1 GiB RAM) is too small. The application needs at least 2 GiB RAM to run smoothly.
+
+---
+
+### Step 3.3: Configure Key Pair
+
+**Key pair (login):**
+1. Select the key pair you created: **`MCPBedrockKP`** (or your existing key pair)
+2. Ensure you have the `.pem` file saved securely
+
+---
+
+### Step 3.4: Configure Network Settings
+
+Click **Edit** next to Network settings:
+
+1. **VPC**: Select your default VPC (or custom VPC if you have one)
+2. **Subnet**: Leave as default (or select a public subnet)
+3. **Auto-assign public IP**: **Enable** (you need this to access the instance)
+4. **Firewall (security groups)**: Select **existing security group**
+5. Choose: **`MCPBedrockSG`** (the security group you created earlier)
+
+---
+
+### Step 3.5: Configure Storage
+
+**Configure storage:**
+1. Size: **30 GiB** (sufficient for the OS, application, and logs)
+2. Volume type: **gp3** (faster and more cost-effective than gp2)
+3. Leave other settings as default
+
+💾 **Storage cost**: ~$2.40/month for 30 GiB gp3
+
+---
+
+### Step 3.6: Advanced Details - Attach IAM Role
+
+Scroll down to **Advanced details** and expand it:
+
+1. Find **IAM instance profile**
+2. Select: **`MCPBedrockRole`** (the role you created earlier)
+
+⚠️ **Critical**: This step is easy to miss but essential. Without this role, your instance cannot access Bedrock or cost data.
+
+---
+
+### Step 3.7: Review and Launch
+
+1. Review the **Summary** panel on the right
+2. Verify:
+   - ✅ Instance type: t3.small
+   - ✅ Key pair: MCPBedrockKP
+   - ✅ Security group: MCPBedrockSG
+   - ✅ IAM role: MCPBedrockRole
+   - ✅ Storage: 30 GiB gp3
+3. Click **Launch instance**
+
+---
+
+### Step 3.8: Verify Instance is Running
+
+1. Click **View all instances** (or navigate to EC2 → Instances)
+2. Wait for the instance state to show: **Running** (takes 1-2 minutes)
+3. Wait for the **Status check** to show: **2/2 checks passed** (takes 2-3 minutes)
+
+---
+
+### Step 3.9: Get the Public IP Address
+
+Once the instance is running:
+
+1. Select your instance in the list
+2. In the **Details** tab below, find: **Public IPv4 address**
+3. Copy this IP address - you'll need it to:
+   - SSH into the instance
+   - Access the Chainlit UI later
+
+📝 **Example**: `54.123.45.67`
+
+✅ **Verification**: You should see:
+- Instance state: **Running**
+- Status checks: **2/2 checks passed**
+- Public IPv4 address: **Visible and copied**
+
+---
+
+### ⚠️ Region Check ⚠️
+
+Before proceeding, confirm your instance is in the same region where you enabled Bedrock:
+
+1. Look at the top-right corner of the AWS Console
+2. Verify it shows: **N. Virginia (us-east-1)**
+
+If your instance is in a different region, you'll need to terminate it and launch a new one in us-east-1.
+
+---
+
+### ✅Launch Complete ✅
+
+Your EC2 instance is now running and ready for configuration. You have:
+
+✅ Instance running in us-east-1
+
+✅ Public IP address noted
+
+✅ IAM role attached (MCPBedrockRole)
+
+✅ Security group configured (MCPBedrockSG)
+
+✅ SSH key pair ready (MCPBedrockKP.pem)
+
+**Next**: You'll connect to the instance and install the required software.
+
+---
 
 ------
 
 ## 4. Preparing the Environment
 
-- Open a Powershell and connect to your instance:
+Now that your EC2 instance is running, you'll connect to it and install the required software.
 
-  ``ssh -i /path/to/your-key.pem ec2-user@<EC2-Public-IP>``
+### Step 4.1: Connect to Your EC2 Instance via SSH
 
-- Update the system and install basic packages (git, python, pip, tmux).
+**On Windows (PowerShell):**
+```powershell
+ssh -i C:\Users\YourName\Downloads\MCPBedrockKP.pem ec2-user@54.123.45.67
+```
 
-  - ``sudo dnf update -y``
-  - ``sudo dnf install -y git python3-pip tmux``
+**On Mac/Linux (Terminal):**
 
-- Install **uv** (recommended Python package manager). 
+```bash
+chmod 400 ~/Downloads/MCPBedrockKP.pem
+ssh -i ~/Downloads/MCPBedrockKP.pem ec2-user@54.123.45.67
+```
 
-  - ``curl -LsSf https://astral.sh/uv/install.sh | sh``
+Replace:
 
-- Clone the **sample-bedrock-mcp** repository.
+- `MCPBedrockKP.pem` with your actual key pair filename
+- `54.123.45.67` with your instance's **Public IPv4 address** (from Step 3.9)
 
-  - ``git clone https://github.com/aws-samples/sample-bedrock-mcp.git``
-    ``cd sample-bedrock-mcp``
+**First-time connection:** You'll see a message like "Are you sure you want to continue connecting?" - type `yes` and press Enter.
 
-- Install dependencies with `uv sync --all-groups`. That will:
+✅ **Verification**: You should see a prompt like:
 
-  - Download the right Python (3.13 if available),
-  - Create `.venv` inside the project folder,
-  - Install all dependencies.
-
-- Activate the environment: ``source .venv/bin/activate``
+```
+[ec2-user@ip-172-31-12-34 ~]$
+```
 
 ------
 
-## 5. Testing the Sample Bedrock MCP
+### Step 4.2: Update the System
 
-- **Export the AWS region** environment variable.
+Update Amazon Linux to the latest packages:
 
-  - Run:
+```bash
+sudo dnf update -y
+```
 
-    ```
-    export AWS_REGION=us-east-1
-    ```
+This command:
 
-    Check it:
+- `sudo` - runs with administrator privileges
+- `dnf` - the package manager for Amazon Linux 2023
+- `update -y` - updates all packages, `-y` automatically answers "yes"
 
-    ```
-    echo $AWS_REGION
-    ```
+⏱️ **Time**: Takes 1-2 minutes
 
-    That will return `us-east-1`.
+✅ **Verification**: Command completes without errors, you see "Complete!" at the end.
 
-- Make sure your **role + permissions + Bedrock region are aligned**: after you’ve exported the region run:
+------
 
-  ```
-  aws bedrock list-foundation-models --region $AWS_REGION
-  ```
+### Step 4.3: Install Basic Packages
 
-  If everything is wired correctly, you’ll see a JSON list of available models (Anthropic Claude, Amazon Titan, etc.).
+Install essential tools:
 
-- Launch **Chainlit** to start the UI:
+```bash
+sudo dnf install -y git python3-pip tmux
+```
 
-  - Make sure you are in the project folder
+**What each tool does:**
 
-    ​	Inside your EC2 session:
+- **git** - version control (to clone the repository)
+- **python3-pip** - Python package installer
+- **tmux** - terminal multiplexer (keeps sessions alive if SSH disconnects)
 
-  ```powershell
-  		cd ~/sample-bedrock-mcp
-  ```
+✅ **Verification**: Run `git --version` - you should see git version 2.x.x
 
-  ​		And ensure your virtual environment is active:
+------
 
-  ```powershell
-  		source .venv/bin/activate
-  ```
+### Step 4.4: Install uv Package Manager
 
-  ​		Your prompt should now show `(.venv)` at the start.
+Install **uv**, a fast Python package and project manager:
 
-  - Start the UI server on port 8000:
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
 
-  ```
-  chainlit run src/ui/app.py -h 0.0.0.0 -p 8000
-  ```
+**Why uv?**
 
-  ​	Explanation:
+- Much faster than pip (10-100x speed improvement)
+- Better dependency resolution
+- Built-in virtual environment management
+- Recommended by AWS for Python projects
 
-  `-h 0.0.0.0` → listens on all network interfaces (so you can access from your laptop).
+⏱️ **Time**: Takes 30-60 seconds
 
-  `-p 8000` → port 8000, matching your Security Group rule.
+**After installation, reload your shell:**
 
-- **Access the UI in the browser** on port 8000 :
+```bash
+source $HOME/.cargo/env
+```
 
-  - Open your browser and go to:
+This makes the `uv` and `uvx` commands available in your current session.
 
-  ```
-  http://<EC2-Public-IP>:8000
-  ```
+✅ **Verification**: Run `uv --version` - you should see uv version 0.x.x
 
-  Replace `<EC2-Public-IP>` with the **Public IPv4 address** of your instance.
+------
 
-  If your Security Group inbound rules are correct, you should see the Chainlit chat UI.
+### Step 4.5: Clone the Repository
 
-  
+Clone your FinOps MCP repository:
 
-  ⚠️ If the browser doesn’t connect:
+bash
 
-  - Double-check your **Security Group inbound rule** for TCP 8000.
-  - Make sure you’re using the **public IP** (not the private `172.x.x.x`).
+```bash
+git clone https://github.com/OptimNow/finops-mcp-bedrock.git
+cd finops-mcp-bedrock
+```
 
-  
+✅ **Verification**: Run `ls` - you should see files like `README.md`, `src/`, `.chainlit/`, etc.
 
-  ![image-20250918163315029](C:\Users\jlati\AppData\Roaming\Typora\typora-user-images\image-20250918163315029.png)
+------
+
+### Step 4.6: Install Project Dependencies
+
+Use `uv` to install all Python dependencies:
+
+bash
+
+```bash
+uv sync --all-groups
+```
+
+**What this command does:**
+
+1. Reads `pyproject.toml` to see what dependencies are needed
+2. Downloads and installs Python 3.13 if not already available
+3. Creates a virtual environment in `.venv/` folder
+4. Installs all required packages:
+   - Chainlit (UI framework)
+   - LangChain & LangGraph (AI agent framework)
+   - boto3 (AWS SDK)
+   - MCP adapters and CLI tools
+5. Installs development tools (optional, with `--all-groups`)
+
+⏱️ **Time**: Takes 2-4 minutes (first time only)
+
+💡 **What's a virtual environment?** It's an isolated Python environment for this project only, preventing conflicts with system packages.
+
+✅ **Verification**: You should see "Installed X packages" and no error messages at the end.
+
+------
+
+### Step 4.7: Activate the Virtual Environment
+
+Activate the Python virtual environment:
+
+```bash
+source .venv/bin/activate
+```
+
+After activation, your prompt will change to:
+
+```
+(.venv) [ec2-user@ip-172-31-12-34 finops-mcp-bedrock]$
+```
+
+The `(.venv)` prefix indicates the virtual environment is active.
+
+⚠️ **Important**: You need to activate this environment **every time** you start a new SSH session. If you don't see `(.venv)`, run this command again.
+
+✅ **Verification**:
+
+- Your prompt shows `(.venv)` at the start
+- Run `which python` - it should show: `/home/ec2-user/finops-mcp-bedrock/.venv/bin/python`
+
+------
+
+### Environment Setup Complete ✅
+
+Your EC2 instance is now ready with:
+
+✅ System packages updated
+
+✅ Git, Python, and tmux installed
+
+✅ uv package manager installed
+
+✅ Repository cloned: `finops-mcp-bedrock`
+
+✅ Dependencies installed in virtual environment
+
+✅ Virtual environment activated
+
+**Next**: You'll configure AWS credentials and test the chatbot.
+
+
+
+## 5. Configure and Launch the FinOps Chatbot
+
+Now you'll configure AWS credentials and launch the Chainlit application with the AWS Billing MCP server.
+
+### Step 5.1: Configure AWS Region
+
+Set the AWS region as an environment variable:
+```bash
+export AWS_REGION=us-east-1
+```
+
+**Verify it's set correctly:**
+
+```bash
+echo $AWS_REGION
+```
+
+Expected output: `us-east-1`
+
+💡 **Why this matters**: This tells the AWS SDK which region to use for Bedrock and billing API calls.
+
+✅ **Verification**: The echo command returns `us-east-1`
+
+------
+
+### Step 5.2: Verify Bedrock Access
+
+Test that your IAM role can access Bedrock models:
+
+```bash
+aws bedrock list-foundation-models --region $AWS_REGION
+```
+
+**What you should see:**
+
+- A JSON list of available models on-demand (as of October 7th, 2025)
+- Includes models like: `amazon.titan-text-express-v1`, `amazon.nova-pro-v1:0`, etc.
+
+![models](assets/52.png)
+
+**If you see an error:**
+
+- Check that your IAM role (`MCPBedrockRole`) is attached to the EC2 instance
+- Verify you enabled Bedrock model access in Section 2.1
+- Confirm you're in the us-east-1 region
+
+✅ **Verification**: You see a JSON list with multiple foundation models, no error messages.
+
+------
+
+### Step 5.3: Verify MCP Configuration
+
+Check that the AWS Billing MCP server is configured:
+
+```bash
+cat .chainlit/mcp.json
+```
+
+**Expected content:** You should see a configuration that includes the AWS Billing MCP server, similar to:
+
+```json
+{
+  "servers": {
+    "aws-billing": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": ["awslabs.billing-cost-management-mcp-server@latest"],
+      "env": {
+        "AWS_REGION": "us-east-1",
+        "AWS_PROFILE": "default"
+      }
+    }
+  }
+}
+```
+
+**If the file looks different or is missing**, refer to the repository's `.chainlit/mcp.json` example.
+
+✅ **Verification**: The file exists and contains AWS Billing MCP server configuration.
+
+------
+
+### Step 5.4: Ensure You're in the Project Directory
+
+Make sure you're in the correct folder with virtual environment active:
+
+```bash
+cd ~/finops-mcp-bedrock
+source .venv/bin/activate
+```
+
+Your prompt should show:
+
+```
+(.venv) [ec2-user@ip-172-31-12-34 finops-mcp-bedrock]$
+```
+
+✅ **Verification**: Prompt shows `(.venv)` and you're in the `finops-mcp-bedrock` directory.
+
+------
+
+### Step 5.5: Launch the Chainlit Application
+
+Start the Chainlit UI server:
+
+```bash
+CHAINLIT_MCP_CONFIG=.chainlit/mcp.json chainlit run src/ui/app.py -h 0.0.0.0 -p 8000
+```
+
+**Command breakdown:**
+
+- `CHAINLIT_MCP_CONFIG=.chainlit/mcp.json` - tells Chainlit where to find MCP server configuration
+- `chainlit run src/ui/app.py` - runs the application
+- `-h 0.0.0.0` - listens on all network interfaces (allows access from your laptop)
+- `-p 8000` - uses port 8000 (matching your Security Group rule)
+
+**What you should see:**
+
+```
+2025-10-07 14:32:10 - Loaded .env file
+2025-10-07 14:32:11 - Your app is available at http://0.0.0.0:8000
+2025-10-07 14:32:11 - MCP Server 'aws-billing' connected successfully
+```
+
+⚠️ **Don't close this terminal** - the application is running in the foreground. You'll open a new browser window to access it.
+
+✅ **Verification**: You see "Your app is available" and "MCP Server connected successfully" messages.
+
+------
+
+### Step 5.6: Access the Chatbot UI in Your Browser
+
+1. Open your web browser (Chrome, Firefox, Safari, etc.)
+2. Go to: `http://<EC2-Public-IP>:8000` Replace `<EC2-Public-IP>` with your instance's Public IPv4 address (from Step 3.9) **Example**: `http://54.123.45.67:8000`
+
+**What you should see:**
+
+- A Chainlit chat interface
+- A message box where you can type questions
+- (Optional) A welcome message from the assistant
+
+![Chainlit UI Interface](assets/51.png)
+
+**If the browser doesn't connect:**
+
+- ✅ Verify your Security Group has port 8000 open (Section 2.4)
+- ✅ Use the **public IP** (not private IP like 172.x.x.x)
+- ✅ Make sure `http://` is in the URL (not `https://`)
+- ✅ Check the terminal - is Chainlit still running without errors?
+
+✅ **Verification**: The Chainlit chat interface loads in your browser.
+
+------
+
+### Step 5.7: Test the AWS Billing MCP Integration
+
+Now test that the chatbot can access your AWS cost data. Try these queries:
+
+**Test 1 - Basic cost query:**
+
+```
+What were my AWS costs last month?
+```
+
+**Expected behavior:**
+
+- The assistant uses the AWS Billing MCP tools
+- You see tool usage indicators in the chat
+- You get actual cost data from your AWS account
+
+**Test 2 - Cost breakdown:**
+
+```
+Show me my top 5 AWS services by cost for the last 30 days
+```
+
+**Expected behavior:**
+
+- The assistant queries Cost Explorer
+- Returns a list or chart of your top services
+
+**Test 3 - Visual representation:**
+
+```
+Create a chart showing my daily AWS spending for the last week
+```
+
+**Expected behavior:**
+
+- The assistant generates a visualization
+- You see a graph or chart embedded in the chat
+
+💡 **No cost data?** If you have a new AWS account with minimal usage, you might not see much data. Try asking about available AWS services or regions instead.
+
+✅ **Verification**: The chatbot responds with actual AWS cost data from your account using the MCP tools.
+
+------
+
+### Step 5.8: Understanding What's Happening
+
+When you ask a cost-related question:
+
+1. **Your query** goes to Chainlit UI
+2. **LangGraph agent** analyzes it using Bedrock (Titan or Nova models)
+3. **Agent decides** which MCP tools to use
+4. **AWS Billing MCP server** queries Cost Explorer API
+5. **Results** are processed and returned to you
+6. **(Optional)** Visualizations are generated using Vega-Lite or Mermaid
+
+All of this happens **within your AWS environment** - no data leaves your EC2 instance or AWS account.
+
+------
+
+### Stopping the Application
+
+When you're done testing:
+
+1. Go back to the terminal running Chainlit
+2. Press `Ctrl+C` to stop the server
+3. You'll return to the command prompt
+
+**Want to keep it running?** See Section 7 for how to run it as a background service.
+
+------
+
+### Chatbot Launch Complete ✅
+
+You now have a working FinOps chatbot that can:
+
+- ✅ Access AWS cost data via MCP
+- ✅ Generate visualizations and charts
+- ✅ Answer natural language questions about your cloud costs
+- ✅ Run securely within your AWS environment
+
+**Next**: Configure the AWS Billing MCP server with additional capabilities and explore advanced FinOps scenarios.
+
+![image-20250918163315029](C:\Users\jlati\AppData\Roaming\Typora\typora-user-images\image-20250918163315029.png)
 
 - Test the default agent with the sample “Math” MCP server.
 
 ------
 
-## 6. Connecting the FinOps MCP Server
+## 6. Verifying MCP Server Connection
 
-- In the Chainlit UI (plug icon), add the FinOps MCP server:
-  - Command: run the Billing & Cost Management MCP server,
-  - Type: stdio,
-  - Environment: AWS region and other variables if required.
-- Verify that the FinOps tools appear in the tool list.
-- Test with a simple query, e.g. *“Show me my AWS costs for the last month.”*
+Now that your chatbot is running, let's verify that the AWS Billing MCP server is properly connected and see what tools are available.
+
+### Step 6.1: View Connected MCP Servers
+
+In the Chainlit UI, look for the **plug icon** (🔌) in the bottom-left or top-right corner of the interface.
+
+1. Click the **plug icon**
+2. This opens the **MCP Server Settings** panel
+
+**What you should see:**
+
+![MCP Server Connection Status](assets/6.png)
+
+The panel shows:
+- **Connected MCP servers** (should show "aws-billing" or similar)
+- **Connection status** (green indicator = connected)
+- **Available tools** from each MCP server
+
+✅ **Verification**: You see the AWS Billing MCP server listed as connected with a green/active status.
+
+---
+
+
+
+### Step 6.2: Explore Available MCP Tools
+
+In the MCP Server Settings panel, you can see the tools provided by the AWS Billing MCP server. These typically include:
+
+**Cost Analysis Tools:**
+- `get_cost_and_usage` - Query AWS costs for specific time periods
+- `get_cost_forecast` - Get cost predictions
+- `get_dimension_values` - List available services, regions, accounts
+
+**Budget & Savings Tools:**
+- `get_savings_plans_coverage` - Check Savings Plans utilization
+- `get_reservation_coverage` - Check Reserved Instance coverage
+- `get_rightsizing_recommendations` - Get EC2 rightsizing suggestions
+
+**Additional Tools:**
+- `get_cost_anomalies` - Detect unusual spending patterns
+- Various filtering and grouping capabilities
+
+💡 **What are MCP tools?** These are functions that the LLM can call to interact with AWS
+
+
+
+### Step 6.3: Test Tool Availability
+
+To verify the tools are working, try a query that uses multiple tools:
+
+```bash
+What were my costs last month, and what's the forecast for next month?
+```
+
+**Expected behavior:**
+- The agent uses `get_cost_and_usage` for historical data
+- Then uses `get_cost_forecast` for predictions
+- You see tool usage indicators in the chat
+- Results include both actual and forecasted costs
+
+**In the chat interface, you might see:**
+- 🔧 Tool indicators showing which MCP tools were called
+- Progress messages like "Retrieving cost data..."
+- Final response with synthesized information
+
+✅ **Verification**: The chatbot successfully uses multiple MCP tools to answer your query.
+
+
+
+### Step 6.4: Understanding the Architecture
+
+Here's what happens when you ask a cost question:
+
+```
+User Query 
+↓ 
+Chainlit UI (port 8000) 
+↓ 
+LangGraph Agent (on EC2) 
+↓ 
+Amazon Bedrock (Titan/Nova models) 
+↓ 
+Decides which MCP tools to use 
+↓ 
+AWS Billing MCP Server (local on EC2) 
+↓ 
+AWS Cost Explorer API 
+↓ 
+Results back through the chain
+```
+
+**Key security point**: The MCP server runs **locally on your EC2 instance**. Your billing data never leaves AWS, and the Bedrock models process everything within your AWS environment.
+
+
+
+
+
+### Troubleshooting MCP Connection Issues
+
+**If you don't see the MCP server connected:**
+
+**Check the terminal** where Chainlit is running:
+
+- Look for ``"MCP Server 'aws-billing' connected successfully"``
+- If you see connection errors, the MCP server might not be installed
+
+**Verify uvx is available:**
+
+```bash
+  which uvx
+```
+
+Should return: `/home/ec2-user/.cargo/bin/uvx`
+
+**Test MCP server manually:**
+
+```bash
+   uvx awslabs-cost-explorer-mcp-server
+```
+
+This should download and start the MCP server (press Ctrl+C to stop)
+
+**Check `.chainlit/mcp.json`**:
+
+```bash
+   cat .chainlit/mcp.json
+```
+
+Verify it has the correct configuration for aws-billing
+
+**Restart Chainlit** with debug logging:
+
+```bash
+   LOG_LEVEL=DEBUG CHAINLIT_MCP_CONFIG=.chainlit/mcp.json chainlit run src/ui/app.py -h 0.0.0.0 -p 8000
+```
+
+Check the logs for MCP connection details
+
+------
+
+### MCP Verification Complete ✅
+
+You've confirmed:
+
+✅ AWS Billing MCP server is connected
+
+✅ MCP tools are available and listed
+
+✅ The agent can successfully use tools to query AWS cost data
+
+✅ Your architecture is secure (all processing within AWS)
+
+**Next**: Set up the application to run as a persistent service using systemd.
 
 ------
 
