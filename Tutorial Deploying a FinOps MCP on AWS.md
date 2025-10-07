@@ -930,11 +930,252 @@ You've confirmed:
 
 ------
 
-## 7. Automation with systemd
+## 7. Running as a Persistent Service with systemd
 
-- Create a systemd service for **Chainlit** so it starts automatically and restarts on failure.
-- Verify its status.
-- (Optional) do the same for the FinOps MCP server.
+Currently, the Chainlit application only runs while you're connected via SSH. If you disconnect or the terminal closes, the application stops. Let's configure it as a systemd service so it:
+
+- **Starts automatically** when the EC2 instance boots
+- **Restarts automatically** if it crashes
+- **Runs in the background** (no need to keep SSH session open)
+- **Can be easily stopped/started/restarted** with simple commands
+
+---
+
+### Step 7.1: Stop the Current Chainlit Process
+
+If Chainlit is still running in your terminal:
+
+1. Go to the terminal running Chainlit
+2. Press `Ctrl+C` to stop it
+3. Verify it stopped (you should see your command prompt return)
+
+---
+
+### Step 7.2: Create the systemd Service File
+
+Create a new systemd service file:
+```bash
+sudo nano /etc/systemd/system/finops-chatbot.service
+```
+
+**Paste this content into the file:**
+
+```ini
+[Unit]
+Description=FinOps MCP Chatbot with Chainlit
+After=network.target
+
+[Service]
+Type=simple
+User=ec2-user
+WorkingDirectory=/home/ec2-user/finops-mcp-bedrock
+Environment="PATH=/home/ec2-user/finops-mcp-bedrock/.venv/bin:/home/ec2-user/.cargo/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="AWS_REGION=us-east-1"
+Environment="CHAINLIT_MCP_CONFIG=/home/ec2-user/finops-mcp-bedrock/.chainlit/mcp.json"
+ExecStart=/home/ec2-user/finops-mcp-bedrock/.venv/bin/chainlit run src/ui/app.py -h 0.0.0.0 -p 8000
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+```
+
+**Understanding the configuration:**
+
+| Section                                 | What it does                                                 |
+| --------------------------------------- | ------------------------------------------------------------ |
+| `After=network.target`                  | Waits for network to be available before starting            |
+| `User=ec2-user`                         | Runs as ec2-user (not root)                                  |
+| `WorkingDirectory`                      | Sets the project folder as the current directory             |
+| `Environment="PATH=..."`                | Includes .venv/bin and .cargo/bin so uv, uvx, and python are found |
+| `Environment="AWS_REGION=..."`          | Sets the AWS region                                          |
+| `Environment="CHAINLIT_MCP_CONFIG=..."` | Points to the MCP server configuration                       |
+| `ExecStart`                             | The actual command to run                                    |
+| `Restart=always`                        | Automatically restart if it crashes                          |
+| `RestartSec=10`                         | Wait 10 seconds before restarting                            |
+
+
+
+**Save and exit:**
+
+- Press `Ctrl+X`
+- Press `Y` to confirm
+- Press `Enter` to save
+
+✅ **Verification**: The file is saved at `/etc/systemd/system/finops-chatbot.service`
+
+------
+
+### Step 7.3: Reload systemd and Enable the Service
+
+Tell systemd about the new service:
+
+```bash
+sudo systemctl daemon-reload
+```
+
+Enable the service to start on boot:
+
+```bash
+sudo systemctl enable finops-chatbot.service
+```
+
+**Expected output:**
+
+```
+Created symlink /etc/systemd/system/multi-user.target.wants/finops-chatbot.service → /etc/systemd/system/finops-chatbot.service
+```
+
+✅ **Verification**: You see "Created symlink" message.
+
+------
+
+### Step 7.4: Start the Service
+
+Start the service now:
+
+```bash
+sudo systemctl start finops-chatbot.service
+```
+
+Wait 5-10 seconds for it to fully start.
+
+✅ **Verification**: No error messages appear.
+
+------
+
+### Step 7.5: Check Service Status
+
+Verify the service is running:
+
+```bash
+sudo systemctl status finops-chatbot.service
+```
+
+**Expected output:**
+
+```
+● finops-chatbot.service - FinOps MCP Chatbot with Chainlit
+     Loaded: loaded (/etc/systemd/system/finops-chatbot.service; enabled; preset: disabled)
+     Active: active (running) since Tue 2025-10-07 14:32:10 UTC; 5s ago
+   Main PID: 12345 (chainlit)
+      Tasks: 12 (limit: 4657)
+     Memory: 145.2M
+        CPU: 2.341s
+     CGroup: /system.slice/finops-chatbot.service
+             └─12345 /home/ec2-user/finops-mcp-bedrock/.venv/bin/python ...
+
+Oct 07 14:32:10 ip-172-31-12-34 systemd[1]: Started FinOps MCP Chatbot with Chainlit.
+Oct 07 14:32:11 ip-172-31-12-34 chainlit[12345]: Your app is available at http://0.0.0.0:8000
+Oct 07 14:32:11 ip-172-31-12-34 chainlit[12345]: MCP Server 'aws-billing' connected successfully
+```
+
+**Look for:**
+
+✅ `Active: active (running)` in green
+
+✅ "Your app is available at http://0.0.0.0:8000"
+
+✅ "MCP Server 'aws-billing' connected successfully"
+
+Press `q` to exit the status view.
+
+✅ **Verification**: Status shows "active (running)" and no errors.
+
+------
+
+### Step 7.6: Test the Application
+
+Open your browser and go to:
+
+```
+http://<EC2-Public-IP>:8000
+```
+
+The Chainlit UI should load, and you can ask cost questions just like before.
+
+✅ **Verification**: The chatbot is accessible and responds to queries.
+
+------
+
+### Step 7.7: View Service Logs (Optional)
+
+To see real-time logs from the service:
+
+```bash
+sudo journalctl -u finops-chatbot.service -f
+```
+
+This shows:
+
+- Application startup messages
+- MCP connection status
+- Any errors or warnings
+- User queries and responses (if logging is enabled)
+
+Press `Ctrl+C` to stop viewing logs.
+
+**To view only recent logs (last 50 lines):**
+
+```bash
+sudo journalctl -u finops-chatbot.service -n 50
+```
+
+------
+
+#### Managing the Service
+
+**Useful commands:**
+
+| Command                                         | What it does          |
+| ----------------------------------------------- | --------------------- |
+| `sudo systemctl stop finops-chatbot.service`    | Stop the service      |
+| `sudo systemctl start finops-chatbot.service`   | Start the service     |
+| `sudo systemctl restart finops-chatbot.service` | Restart the service   |
+| `sudo systemctl status finops-chatbot.service`  | Check if it's running |
+| `sudo systemctl disable finops-chatbot.service` | Don't start on boot   |
+| `sudo systemctl enable finops-chatbot.service`  | Start on boot         |
+
+
+
+### Step 7.8: Test Auto-Restart on Reboot
+
+Let's verify the service starts automatically after a reboot:
+
+```bash
+sudo reboot
+```
+
+**Your SSH session will disconnect.** Wait 2-3 minutes, then:
+
+1. SSH back into the instance
+2. Check the service status:
+
+```bash
+   sudo systemctl status finops-chatbot.service
+```
+
+1. Open the browser to `http://<EC2-Public-IP>:8000`
+
+✅ **Verification**: The service is running and the UI is accessible without any manual start commands.
+
+------
+
+### ✅systemd Configuration Complete 
+
+Your FinOps chatbot is now:
+
+✅ Running as a background service
+
+✅ Starts automatically on instance boot
+
+✅ Restarts automatically if it crashes
+
+✅ Accessible at any time without SSH session
+
+✅ Managed with simple systemctl commands
+
+**Next**: Explore practical FinOps scenarios and advanced queries.
 
 ------
 
