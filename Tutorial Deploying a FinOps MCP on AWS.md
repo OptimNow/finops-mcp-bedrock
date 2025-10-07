@@ -75,52 +75,134 @@ Before starting, ensure you have:
 
 ## 2. AWS Preparation
 
-- **Enable Bedrock** in the chosen region: in the bedrock menu scroll down to model access and request access to all Anthropic models. (video)
+This section covers the AWS resources you need to create before launching your EC2 instance. Complete these steps in order.
 
-- Create an **IAM policy** "MCPBedrockPolicy" with 
+### Step 2.1: Enable Bedrock Model Access
 
-  - Permissions for Bedrock (InvokeModel, ListFoundationModels, …),
-  - Permissions for Billing/Cost Explorer/Budgets/Pricing/Compute Optimizer, etc.,
-  - (Optional) CloudWatch Logs, Storage Lens/Athena.
-  - check the inline policy here that you can load in the json.
+1. Navigate to the **Amazon Bedrock** console in your chosen region (we'll use **us-east-1** / North Virginia for this tutorial)
+2. In the left menu, scroll down to **Model access**
+3. Click **Manage model access** or **Request model access**
+4. Enable access to:
+   - **Amazon Titan** models (Titan Text, Titan Image Generator)
+   - **Amazon Nova** models (Nova Pro, Nova Lite, Nova Micro)
+5. Click **Save changes** and wait for approval (usually instant)
 
-- Create an IAM AWS **Service Role**  "MCPBedrockRole" for the EC2 instance:
+✅ **Verification**: The status should show "Access granted" for the models you selected.
 
-  - You want the **role to be assumed by an EC2 instance**.
-  - So when you create it in the console, choose **“Trusted entity type = AWS service”**, then **“Use case = EC2”**.
-  - That makes it an **EC2 service role** (an IAM role that EC2 instances can assume automatically when attached).
-  - ![](C:\Users\jlati\AppData\Roaming\Typora\typora-user-images\image-20250917151508981.png)
+---
 
-- Attach the custom FinOps MCP policy to the role. then, when you launch the instance, select this role under IAM instance profile.
+### Step 2.2: Create IAM Policy for MCP & Bedrock
 
-  ![image-20250917151838187](C:\Users\jlati\AppData\Roaming\Typora\typora-user-images\image-20250917151838187.png)
+You need a custom IAM policy that grants permissions for Bedrock and AWS cost data access.
 
-- Create a **Security Group** "MCPBedrockSG" opening port 22 for ssh and 8000 for chainlit. 
+1. Download the policy file: [`MCPBedrockPolicy.json`](../MCPBedrockPolicy.json) from the repository root
+2. In the **IAM Console**, go to **Policies** → **Create policy**
+3. Click the **JSON** tab
+4. Copy and paste the content from `MCPBedrockPolicy.json`
+5. Click **Next**
+6. Name it: **`MCPBedrockPolicy`**
+7. Add description: `Permissions for FinOps MCP chatbot to access Bedrock and billing data`
+8. Click **Create policy**
 
-  🔑 Why do we need port 8000? By default, the **Chainlit UI** (the chat interface in your sample) runs on **TCP port 8000**. If you want to open that UI in a browser from your laptop (outside AWS), the EC2 instance must accept inbound traffic on port 8000. Without opening it, you could only connect *from inside* the instance (e.g., with `curl localhost:8000`). 
+**What this policy grants:**
+- Bedrock model invocation (InvokeModel, ListFoundationModels)
+- Cost Explorer and Billing data access
+- (Optional) CloudWatch Logs, Compute Optimizer
 
-  So: opening **8000/tcp inbound** makes the Chainlit web app accessible.
+✅ **Verification**: You should see "MCPBedrockPolicy" in your IAM policies list.
 
-  - When creating the SG, we can select our default VPC, unless you want a custom network topology). 
-  - In Inbound Rules, Add 2 rules type "Custom TCP Rule", first one for port Range 8000, second on port range 22, Source: for testing/demo, enter your IP, or 0.0.0.0/0 if you want access from anywhere -but not recommended for production.
-  - In Outbound rules: leave default (All traffic allowed) — needed for the EC2 to reach AWS APIs (Bedrock, Cost Explorer, etc.).
+---
 
-- Create a **Key Pair** "MCPBedrockKP" or plan to use **Session Manager** for access:
+### Step 2.3: Create IAM Role for EC2
 
-  - **Key pair type** → **RSA**
+Now create an IAM role that your EC2 instance will use to access AWS services.
 
-    - RSA is the default and broadly supported by OpenSSH and Amazon Linux.
-    - ED25519 also works, but RSA is safest for compatibility.
+1. In the **IAM Console**, go to **Roles** → **Create role**
+2. Select **Trusted entity type**: **AWS service**
+3. Select **Use case**: **EC2**
+4. Click **Next**
 
-    **Private key file format** → **.pem**
+![Select EC2 as the trusted entity](assets/21.png)
 
-    - `.pem` is the standard format used by OpenSSH clients and AWS tutorials.
-    - You’ll use this file with `ssh -i mykey.pem ec2-user@...` to log in.
-    - Keep it safe and **chmod 400 mykey.pem** before using, otherwise SSH will complain about permissions.
+5. In **Permissions**, search for and select: **`MCPBedrockPolicy`** (the policy you just created)
+6. Click **Next**
+7. Name the role: **`MCPBedrockRole`**
+8. Add description: `EC2 service role for FinOps MCP chatbot`
+9. Click **Create role**
 
+![Attach the MCPBedrockPolicy to the role](assets/22.png)
 
+**Why an EC2 service role?**
+This allows the EC2 instance to automatically assume this role without storing credentials on the instance. It's more secure than using access keys.
 
+✅ **Verification**: You should see "MCPBedrockRole" in your IAM roles list with "MCPBedrockPolicy" attached.
 
+---
+
+### Step 2.4: Create Security Group
+
+Create a security group to control network access to your EC2 instance.
+
+1. In the **EC2 Console**, go to **Security Groups** → **Create security group**
+2. Name: **`MCPBedrockSG`**
+3. Description: `Security group for FinOps MCP chatbot`
+4. VPC: Select your **default VPC** (or custom VPC if you have one)
+
+**Inbound Rules** - Add two rules:
+
+| Type       | Protocol | Port Range | Source | Description        |
+| ---------- | -------- | ---------- | ------ | ------------------ |
+| SSH        | TCP      | 22         | My IP  | SSH access         |
+| Custom TCP | TCP      | 8000       | My IP  | Chainlit UI access |
+
+**Source IP recommendations:**
+- **For testing**: Use "My IP" (your current public IP)
+- **For team access**: Use your office IP range (e.g., 203.0.113.0/24)
+- **Not recommended**: 0.0.0.0/0 (allows access from anywhere - security risk)
+
+**Outbound Rules**: Leave default (All traffic allowed) - needed for the EC2 instance to reach AWS APIs (Bedrock, Cost Explorer, etc.)
+
+🔒 **Security note**: Port 8000 is needed to access the Chainlit web interface from your browser. Without it, you can only access the UI from within the EC2 instance itself.
+
+✅ **Verification**: You should see "MCPBedrockSG" in your security groups list with the two inbound rules.
+
+---
+
+### Step 2.5: Create or Select SSH Key Pair
+
+You need an SSH key pair to connect to your EC2 instance.
+
+**If you already have a key pair**, you can skip this step and use your existing one.
+
+**To create a new key pair:**
+
+1. In the **EC2 Console**, go to **Key Pairs** → **Create key pair**
+2. Name: **`MCPBedrockKP`**
+3. Key pair type: **RSA** (better compatibility)
+4. Private key file format: **.pem** (for OpenSSH)
+5. Click **Create key pair** - the file will download automatically
+
+**Important**: 
+- Save the `.pem` file in a secure location
+- On Mac/Linux, set proper permissions: `chmod 400 MCPBedrockKP.pem`
+- On Windows, Windows will handle permissions automatically
+
+✅ **Verification**: You should have the `.pem` file downloaded and know where it's saved.
+
+---
+
+### Preparation Complete ✅
+
+You've now created:
+- ✅ Bedrock model access enabled
+- ✅ IAM policy: `MCPBedrockPolicy`
+- ✅ IAM role: `MCPBedrockRole`
+- ✅ Security group: `MCPBedrockSG`
+- ✅ Key pair: `MCPBedrockKP.pem`
+
+Next, you'll use these to launch your EC2 instance.
+
+---
 
 ------
 
