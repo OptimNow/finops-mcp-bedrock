@@ -295,3 +295,4 @@ semgrep_report.json
 # Generated files
 outputs/
 
+.env
