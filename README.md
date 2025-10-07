@@ -1,4 +1,4 @@
-# OptimNow FinOps Assistant (MCP + Bedrock + Chainlit)
+# Cloud FinOps Assistant (MCP + Bedrock + Chainlit)
 
 This project is a **FinOps assistant** built on top of **AWS Bedrock**, **LangChain**, and the **Model Context Protocol (MCP)**.  
 It connects to external MCP servers (such as **AWS Billing & Cost Management**, Azure, and GCP) to query cloud costs and enrich the assistant with live data and tools.  
@@ -7,25 +7,42 @@ The UI is powered by **Chainlit**, giving you a chat interface where you can:
 - Analyze AWS costs and usage through the AWS Billing MCP server  
 - Generate charts and graphs from cost data (Vega-Lite renderer)  
 - Create diagrams or images (Mermaid + Amazon Titan Image Generator v2)  
-- Extend the assistant with moreMCP servers (Azure, GCP, etc.)  
+- Extend the assistant with more
+- MCP servers (Azure, GCP, etc.)  
+
+
 
 ---
 
-## ✅ What we’ve done so far
+## Features
 
-- Set up a self-contained **EC2 instance** with Python virtual environment.  
-- Installed and pinned correct versions of Chainlit, LangChain, MCP, and adapters.  
-- Added `.chainlit/mcp.json` to declare external MCP servers (e.g. AWS Billing).   
-- Added `.env` loader for credentials (AWS_REGION, AWS_PROFILE, etc.).  
-- Debugged compatibility issues between Chainlit and MCP, with logging enabled.  
+- **AWS Cost Analysis**: Query and analyze AWS costs through the AWS Billing MCP server
+- **Data Visualization**: Generate charts and graphs from cost data using Vega-Lite renderer
+- **Image Generation**: Create diagrams with Mermaid or generate images using Amazon Titan Image Generator v2
+- **Multi-Cloud Ready**: Extend with additional MCP servers for Azure and GCP cost analysis
+- **Interactive Chat Interface**: User-friendly Chainlit UI for natural language queries
 
 ---
 
-## 📖 Tutorial / Installation
+## Prerequisites
 
-### Prerequisites
+Before installing, ensure you have:
 
-The Chainlit configuration expects an `uvx` executable to be available in your `PATH` so it can launch the AWS Billing MCP server defined in `.chainlit/mcp.json`. Install the [`uv`](https://github.com/astral-sh/uv) package (which provides the `uvx` shim) following the upstream instructions for your platform, or provide an equivalent wrapper script checked into this repository and ensure it is executable and discoverable via `PATH`.
+- **AWS Account** with access to Amazon Bedrock (Titan and Nova models)
+
+- **Python 3.13+** installed
+
+- **AWS IAM permissions** for:
+  - Amazon Bedrock model invocation
+  - AWS Cost Explorer / Billing data access
+  
+- **uv package manager**: Install [`uv`](https://github.com/astral-sh/uv) which provides the `uvx` executable needed to launch MCP servers. Follow the [upstream installation instructions](https://github.com/astral-sh/uv) for your platform.
+
+  
+
+## Tutorial / Installation
+
+
 
 ### Deploy
 
@@ -47,10 +64,9 @@ It explains how to:
 
 ---
 
-## 🚀 Usage
+## Usage
 
 From your EC2 instance:
-
 ```bash
 source .venv/bin/activate
 CHAINLIT_MCP_CONFIG=.chainlit/mcp.json chainlit run src/ui/app.py --host 0.0.0.0 --port 8000
@@ -60,41 +76,87 @@ Then open the app in your browser at:
 
 http://<your-ec2-public-ip>:8000
 
+**Note:** For detailed configuration of `.env` and `.chainlit/mcp.json`, see the [Tutorial](Tutorial Deploying a FinOps MCP on AWS.md).
 
 
 
 
+## Architecture
 
-## Technical Implementation
+### How It Works
 
-### LangGraph Integration
+This project uses **LangGraph** to create a ReAct agent that follows this workflow:
 
-This project uses LangGraph to create a ReAct agent that follows this workflow:
-
-1. The agent receives user input via the Chainlit interface
-2. When cloud billing data is required, it uses the MCP tools to perform calculations
-3. It uses the AWS Billing MCP server tools to query and analyze cloud costs
-4. Results are returned to the user with a detailed explanation
+1. User submits a query through the Chainlit chat interface
+2. The LangGraph agent analyzes the query and determines which MCP tools to use
+3. The agent calls AWS Billing MCP server tools to retrieve cost data
+4. Results are processed and returned with visualizations or explanations
 
 The ReAct agent is created using `langgraph.prebuilt.create_react_agent()`, which orchestrates the reasoning and tool-use process.
 
-### LangChain MCP Adapters
+### MCP Integration
 
-The `langchain-mcp-adapters` package serves as a bridge between LangChain and MCP:
+The `langchain-mcp-adapters` package bridges LangChain and the Model Context Protocol:
 
-- `load_mcp_tools()` converts MCP tools into LangChain-compatible tools
-- These tools are then provided to the LangGraph agent for use in the ReAct loop
-- This enables seamless integration between Amazon Bedrock models (Titan and Nova) and the AWS Billing MCP server tools.
+- `load_mcp_tools()` converts MCP tools into LangChain-compatible format
+- Tools are dynamically loaded and provided to the LangGraph agent
+- Enables seamless integration between Amazon Bedrock models (Titan and Nova) and AWS Billing MCP server
 
-This adapter pattern allows the application to easily incorporate additional MCP servers with different capabilities in the future.
+This adapter pattern allows easy addition of MCP servers for Azure, GCP, or custom tools.
 
 
-## Development
 
-The project structure includes:
+## Project Structure
 
-- `src/ui/app.py`: The Chainlit application setup with LangGraph and MCP integration
-- `src/utils/`: Utility modules for Bedrock integration and streaming
+├── src/ 
+
+│   ├── ui/ 
+
+│   │   └── app.py              # Chainlit application with LangGraph integration 
+
+│   └── utils/                  # Bedrock integration and streaming utilities 
+
+├── .chainlit/ 
+
+│   └── mcp.json                # MCP server configuration 
+
+├── .env                        # AWS credentials and region configuration 
+
+├── requirements.txt            # Python dependencies 
+
+└── Tutorial Deploying a FinOps MCP on AWS.md
+
+- **Key files:**
+  - **`app.py`**: Main Chainlit application with LangGraph ReAct agent
+  - **`mcp.json`**: Defines external MCP servers (AWS Billing, Azure, GCP)
+  - **`.env`**: AWS configuration (region, profile, credentials)
+
+
+
+
+## Extending to Multi-Cloud
+
+To add Azure or GCP cost analysis, update `.chainlit/mcp.json` with additional MCP servers:
+```json
+{
+  "mcpServers": {
+    "aws-billing": {
+      "command": "uvx",
+      "args": ["awslabs-cost-explorer-mcp-server"]
+    },
+    "azure-costs": {
+      "command": "uvx",
+      "args": ["azure-cost-mcp-server"]
+    },
+    "gcp-billing": {
+      "command": "uvx",
+      "args": ["gcp-billing-mcp-server"]
+    }
+  }
+}
+```
+
+The LangGraph agent will automatically discover and use tools from all configured MCP servers.
 
 
 
