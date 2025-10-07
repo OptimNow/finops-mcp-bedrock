@@ -7,7 +7,7 @@ The UI is powered by **Chainlit**, giving you a chat interface where you can:
 - Analyze AWS costs and usage through the AWS Billing MCP server  
 - Generate charts and graphs from cost data (Vega-Lite renderer)  
 - Create diagrams or images (Mermaid + Amazon Titan Image Generator v2)  
-- Extend the assistant with new MCP servers (Azure, GCP, etc.)  
+- Extend the assistant with moreMCP servers (Azure, GCP, etc.)  
 
 ---
 
@@ -15,8 +15,7 @@ The UI is powered by **Chainlit**, giving you a chat interface where you can:
 
 - Set up a self-contained **EC2 instance** with Python virtual environment.  
 - Installed and pinned correct versions of Chainlit, LangChain, MCP, and adapters.  
-- Added `.chainlit/mcp.json` to declare external MCP servers (e.g. AWS Billing).  
-- Integrated MCP connections inside `app.py`, so tools discovered via MCP are dynamically loaded into the assistant.  
+- Added `.chainlit/mcp.json` to declare external MCP servers (e.g. AWS Billing).   
 - Added `.env` loader for credentials (AWS_REGION, AWS_PROFILE, etc.).  
 - Debugged compatibility issues between Chainlit and MCP, with logging enabled.  
 
@@ -86,7 +85,6 @@ This adapter pattern allows the application to easily incorporate additional MCP
 
 The project structure includes:
 
-- `src/mcp/server.py`: The MCP server implementation with math operations
 - `src/ui/app.py`: The Chainlit application setup with LangGraph and MCP integration
 - `src/utils/`: Utility modules for Bedrock integration and streaming
 
