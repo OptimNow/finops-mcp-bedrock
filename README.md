@@ -49,7 +49,7 @@ Before installing, ensure you have:
 
 ### Deploy
 
-Follow the step-by-step tutorial: [Tutorial Deploying a FinOps MCP on AWS](Tutorial%20Deploying%20a%20FinOps%20MCP%20on%20AWS.md)
+Follow the step-by-step tutorial: [INSTALL](INSTALL.md)
 
 It explains how to:
 
@@ -129,7 +129,7 @@ This adapter pattern allows easy addition of MCP servers for Azure, GCP, or cust
 
 ├── requirements.txt            # Python dependencies 
 
-└── Tutorial Deploying a FinOps MCP on AWS.md
+└── INSTALL.md
 
 - **Key files:**
   - **`app.py`**: Main Chainlit application with LangGraph ReAct agent
