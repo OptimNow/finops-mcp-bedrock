@@ -61,22 +61,54 @@ import os
 def render_vega_lite_png(spec: Union[str, dict], output_path: str = "outputs/chart.png") -> str:
     import altair as alt
     import json
-
-    # Accept string or dict
-    if isinstance(spec, str):
-        spec = json.loads(spec)
-
-    # Force mode to vega-lite
-    if "$schema" in spec:
-        spec.pop("$schema", None)
-
-    chart = alt.Chart.from_dict(spec)
-
-    output_dir = os.path.dirname(output_path)
-    if output_dir:
-        os.makedirs(output_dir, exist_ok=True)
-
-    chart.save(output_path, format="png")
-    return output_path
-
-
+    import chainlit as cl
+    from pathlib import Path
+    
+    try:
+        # Accept string or dict
+        if isinstance(spec, str):
+            spec = json.loads(spec)
+        
+        # Force mode to vega-lite
+        if "$schema" in spec:
+            spec.pop("$schema", None)
+        
+        chart = alt.Chart.from_dict(spec)
+        
+        output_dir = os.path.dirname(output_path)
+        if output_dir:
+            os.makedirs(output_dir, exist_ok=True)
+        
+        # Save the chart
+        chart.save(output_path, format="png")
+        
+        # Send the image to Chainlit UI
+        import asyncio
+        
+        async def send_image():
+            image_element = cl.Image(
+                path=output_path,
+                name="Cost Visualization",
+                display="inline"
+            )
+            await cl.Message(
+                content="",
+                elements=[image_element]
+            ).send()
+        
+        # Run the async function
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # We're in an async context
+                asyncio.create_task(send_image())
+            else:
+                asyncio.run(send_image())
+        except RuntimeError:
+            # If we can't get the loop, try creating one
+            asyncio.run(send_image())
+        
+        return f"✅ Chart created and displayed. Data visualization shows your AWS cost information."
+        
+    except Exception as e:
+        return f"❌ Failed to create chart: {str(e)}"
