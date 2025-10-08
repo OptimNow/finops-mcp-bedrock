@@ -272,14 +272,16 @@ Scroll down to **Advanced details** and expand it:
 
 ### Step 3.7: Review and Launch
 
-1. Review the **Summary** panel on the right
-2. Verify:
-   - ✅ Instance type: t3.small
-   - ✅ Key pair: MCPBedrockKP
-   - ✅ Security group: MCPBedrockSG
-   - ✅ IAM role: MCPBedrockRole
-   - ✅ Storage: 30 GiB gp3
-3. Click **Launch instance**
+Review the **Summary** panel on the right
+
+Verify:
+- ✅ Instance type: t3.small
+- ✅ Key pair: MCPBedrockKP
+- ✅ Security group: MCPBedrockSG
+- ✅ IAM role: MCPBedrockRole
+- ✅ Storage: 30 GiB gp3
+
+Click **Launch instance**
 
 ---
 
@@ -349,7 +351,7 @@ Now that your EC2 instance is running, you'll connect to it and install the requ
 
 **On Windows (PowerShell):**
 ```powershell
-ssh -i C:\Users\YourName\Downloads\MCPBedrockKP.pem ec2-user@54.123.45.67
+ssh -i C:\Users\YourName\Downloads\MCPBedrockKP.pem ec2-user@54.160.49.117 <= update with the public IP of the EC2 instance
 ```
 
 **On Mac/Linux (Terminal):**
@@ -361,7 +363,7 @@ ssh -i ~/Downloads/MCPBedrockKP.pem ec2-user@54.123.45.67
 
 Replace:
 
-- `MCPBedrockKP.pem` with your actual key pair filename
+- `C:\Users\YourName\Downloads\MCPBedrockKP.pem` with your actual key pair filename and path
 - `54.123.45.67` with your instance's **Public IPv4 address** (from Step 3.9)
 
 **First-time connection:** You'll see a message like "Are you sure you want to continue connecting?" - type `yes` and press Enter.
@@ -388,7 +390,7 @@ This command:
 - `dnf` - the package manager for Amazon Linux 2023
 - `update -y` - updates all packages, `-y` automatically answers "yes"
 
-⏱️ **Time**: Takes 1-2 minutes
+⏱️ **Time**: can take up to 1-2 minutes
 
 ✅ **Verification**: Command completes without errors, you see "Complete!" at the end.
 
@@ -429,12 +431,6 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 ⏱️ **Time**: Takes 30-60 seconds
 
-**After installation, reload your shell:**
-
-```bash
-source $HOME/.cargo/env
-```
-
 This makes the `uv` and `uvx` commands available in your current session.
 
 ✅ **Verification**: Run `uv --version` - you should see uv version 0.x.x
@@ -444,8 +440,6 @@ This makes the `uv` and `uvx` commands available in your current session.
 ### Step 4.5: Clone the Repository
 
 Clone your FinOps MCP repository:
-
-bash
 
 ```bash
 git clone https://github.com/OptimNow/finops-mcp-bedrock.git
@@ -459,8 +453,6 @@ cd finops-mcp-bedrock
 ### Step 4.6: Install Project Dependencies
 
 Use `uv` to install all Python dependencies:
-
-bash
 
 ```bash
 uv sync --all-groups
@@ -478,7 +470,7 @@ uv sync --all-groups
    - MCP adapters and CLI tools
 5. Installs development tools (optional, with `--all-groups`)
 
-⏱️ **Time**: Takes 2-4 minutes (first time only)
+⏱️ **Time**: Takes 1 to 2 minutes (first time only)
 
 💡 **What's a virtual environment?** It's an isolated Python environment for this project only, preventing conflicts with system packages.
 
@@ -625,10 +617,10 @@ source .venv/bin/activate
 Your prompt should show:
 
 ```
-(.venv) [ec2-user@ip-172-31-12-34 finops-mcp-bedrock]$
+(finops-mcp-bedrock) [ec2-user@ip-172-31-25-147 finops-mcp-bedrock]$
 ```
 
-✅ **Verification**: Prompt shows `(.venv)` and you're in the `finops-mcp-bedrock` directory.
+✅ **Verification**: Prompt shows `(finops-mcp-bedrock)` and you're in the `finops-mcp-bedrock` directory.
 
 ------
 
