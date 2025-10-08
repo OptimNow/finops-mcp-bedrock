@@ -420,13 +420,11 @@ Install **uv**, a fast Python package and project manager:
 
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
-source ~/.cargo/env
-```
 
-**Activate uv in current session:**
-
-```bash
-source ~/.cargo/env
+# Reload your shell environment
+exec bash
+# OR if exec bash doesn't work, try:
+# source ~/.bashrc
 ```
 
 **Why uv?**
