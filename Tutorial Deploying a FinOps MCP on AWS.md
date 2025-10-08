@@ -98,8 +98,9 @@ You need a custom IAM policy that grants permissions for Bedrock and AWS cost da
 
 **What this policy grants:**
 - Bedrock model invocation (InvokeModel, ListFoundationModels)
-- Cost Explorer and Billing data access
-- (Optional) CloudWatch Logs, Compute Optimizer
+- Cost Explorer with Billing data access, budgets and price list
+- CloudWatch Logs, Compute Optimizer
+- List EC2, S3, RDS services
 
 ✅ **Verification**: You should see "MCPBedrockPolicy" in your IAM policies list.
 
