@@ -115,7 +115,7 @@ Now create an IAM role that your EC2 instance will use to access AWS services.
 3. Select **Use case**: **EC2**
 4. Click **Next**
 
-![Select EC2 as the trusted entity](assets/21.png)
+![Select EC2 as the trusted entity](Assets/21.png)
 
 5. In **Permissions**, search for and select: **`MCPBedrockPolicy`** (the policy you just created)
 6. Click **Next**
@@ -123,7 +123,7 @@ Now create an IAM role that your EC2 instance will use to access AWS services.
 8. Add description: `EC2 service role for FinOps MCP chatbot`
 9. Click **Create role**
 
-![Attach the MCPBedrockPolicy to the role](assets/22.png)
+![Attach the MCPBedrockPolicy to the role](Assets/22.png)
 
 **Why an EC2 service role?**
 This allows the EC2 instance to automatically assume this role without storing credentials on the instance. It's more secure than using access keys.
@@ -568,7 +568,7 @@ aws bedrock list-foundation-models --region $AWS_REGION
 - A JSON list of available models on-demand (as of October 7th, 2025)
 - Includes models like: `amazon.titan-text-express-v1`, `amazon.nova-pro-v1:0`, etc.
 
-![models](assets/52.png)
+![models](Assets/52.png)
 
 **If you see an error:**
 
@@ -671,7 +671,7 @@ CHAINLIT_MCP_CONFIG=.chainlit/mcp.json chainlit run src/ui/app.py -h 0.0.0.0 -p 
 - A message box where you can type questions
 - (Optional) A welcome message from the assistant
 
-![Chainlit UI Interface](assets/51.png)
+![Chainlit UI Interface](Assets/51.png)
 
 **If the browser doesn't connect:**
 
@@ -783,7 +783,7 @@ In the Chainlit UI, look for the **plug icon** (🔌) in the bottom-left or top-
 
 **What you should see:**
 
-![MCP Server Connection Status](assets/6.png)
+![MCP Server Connection Status](Assets/6.png)
 
 The panel shows:
 - **Connected MCP servers** (should show "aws-billing" or similar)
