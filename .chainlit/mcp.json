@@ -1,12 +1,10 @@
 {
-  "servers": {
+  "mcpServers": {
     "aws-billing": {
-      "type": "stdio",
       "command": "uvx",
-      "args": ["awslabs.billing-cost-management-mcp-server@latest"],
+      "args": ["--from", "awslabs-cost-explorer-mcp-server", "awslabs.cost-explorer-mcp-server"],
       "env": {
-        "AWS_REGION": "us-east-1",
-        "AWS_PROFILE": "default"
+        "AWS_REGION": "us-east-1"
       }
     }
   }
