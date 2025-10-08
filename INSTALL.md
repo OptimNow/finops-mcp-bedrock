@@ -632,7 +632,7 @@ Your prompt should show:
 Start the Chainlit UI server:
 
 ```bash
-CHAINLIT_MCP_CONFIG=.chainlit/mcp.json chainlit run src/ui/app.py -h 0.0.0.0 -p 8000
+CHAINLIT_MCP_CONFIG=.chainlit/mcp.json chainlit run src/ui/app.py --host 0.0.0.0 --port 8000
 ```
 
 **Command breakdown:**
