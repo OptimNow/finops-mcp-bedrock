@@ -27,7 +27,7 @@ This tutorial uses:
 - **Amazon Bedrock**: Provides managed access to foundation models (Titan, Claude Sonnet 3.5) without using public LLMs or sending data to third-party services
 - **Chainlit**: Offers a ready-to-use chat interface without building a custom UI
 
-**Key security benefit**: Your billing data doesn't leave AWS, and only leaves your EC2 instance to reach Bedrock, where the LLM runs in Bedrock (within AWS). The MCP server runs locally on EC2, and all cost data stays within your AWS account boundaries.
+**Key security benefit**: Your billing data never leaves AWS. The LLM runs in Bedrock, the MCP server runs locally on EC2, and all cost data stays within your AWS account boundaries: **no data is sent to external services.**
 
 **Extensibility**: You can easily add more MCP servers to extend functionality:
 - Additional AWS services (Compute Optimizer, Trusted Advisor, CloudWatch)
@@ -308,7 +308,7 @@ Once the instance is running:
 ✅ **Verification**: You should see:
 - Instance state: **Running**
 - Status checks: **2/2 checks passed**
-- Public IPv4 address: **Visible and copied**
+- Public IPv4 address: **Visible and copied** (this IP changes if the instance stops/starts (not using Elastic IP)).
 
 ---
 
@@ -420,6 +420,13 @@ Install **uv**, a fast Python package and project manager:
 
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
+source ~/.cargo/env
+```
+
+**Activate uv in current session:**
+
+```bash
+source ~/.cargo/env
 ```
 
 **Why uv?**
@@ -759,9 +766,7 @@ You now have a working FinOps chatbot that can:
 
 **Next**: Configure the AWS Billing MCP server with additional capabilities and explore advanced FinOps scenarios.
 
-![image-20250918163315029](C:\Users\jlati\AppData\Roaming\Typora\typora-user-images\image-20250918163315029.png)
 
-- Test the default agent with the sample “Math” MCP server.
 
 ------
 
@@ -1172,29 +1177,3 @@ Your FinOps chatbot is now:
 
 ------
 
-## 8. Practical FinOps Scenarios
-
-- Query **cost by service** using Cost Explorer.
-- Ask for a **cost forecast**.
-- Retrieve **Compute Optimizer recommendations**.
-- Check **Savings Plans/RI coverage**.
-- (Optional) Enable Storage Lens and analyze S3 storage costs.
-
-------
-
-## 9. FinOps & Security Best Practices
-
-- Do not expose port 8000 to the internet in production (use internal ALB, SSM port-forwarding).
-- Restrict **IAM permissions** to the minimum required.
-- Monitor **EC2 costs** (t3.small ~ $20–25/month if always running).
-- (Optional) stop the EC2 instance outside of test sessions.
-
-------
-
-## 10. Conclusion & Next Steps
-
-- Recap the architecture: **UI (Chainlit)** ↔ **Agent** ↔ **FinOps MCP server** ↔ **AWS Billing APIs** ↔ **Bedrock**.
-- Possible extensions:
-  - Add a custom MCP server (e.g. CloudWatch or Trusted Advisor).
-  - Expose the UI via an ALB + Cognito.
-  - Automate installation with Terraform + Ansible.
