@@ -1,10 +1,13 @@
 # Cloud FinOps Assistant (MCP + Bedrock + Chainlit)
 
+
+
 This project is a **FinOps assistant** built on top of **AWS Bedrock**, **LangChain**, and the **Model Context Protocol (MCP)**.  
+
 It connects to external MCP servers (such as **AWS Billing & Cost Management**, Azure, and GCP) to query cloud costs and enrich the assistant with live data and tools.  
 
 The UI is powered by **Chainlit**, giving you a chat interface where you can:
-- Analyze AWS costs and usage through the AWS Billing MCP server  
+- Analyze AWS costs and usage through the AWS Billing MCP server , using Claude 3.5 Sonnet.
 - Generate charts and graphs from cost data (Vega-Lite renderer)  
 - Create diagrams or images (Mermaid + Amazon Titan Image Generator v2)  
 - Extend the assistant with more
@@ -28,7 +31,7 @@ The UI is powered by **Chainlit**, giving you a chat interface where you can:
 
 Before installing, ensure you have:
 
-- **AWS Account** with access to Amazon Bedrock (Titan and Nova models)
+- **AWS Account** with access to Amazon Bedrock (Titan and Claude Sonnet 3.5 models)
 
 - **Python 3.13+** installed
 
@@ -94,13 +97,15 @@ This project uses **LangGraph** to create a ReAct agent that follows this workfl
 
 The ReAct agent is created using `langgraph.prebuilt.create_react_agent()`, which orchestrates the reasoning and tool-use process.
 
+
+
 ### MCP Integration
 
 The `langchain-mcp-adapters` package bridges LangChain and the Model Context Protocol:
 
 - `load_mcp_tools()` converts MCP tools into LangChain-compatible format
 - Tools are dynamically loaded and provided to the LangGraph agent
-- Enables seamless integration between Amazon Bedrock models (Titan and Nova) and AWS Billing MCP server
+- Enables seamless integration between Amazon Bedrock models (Titan and Claude sonnet 3.5) and AWS Billing MCP server
 
 This adapter pattern allows easy addition of MCP servers for Azure, GCP, or custom tools.
 
@@ -142,15 +147,10 @@ To add Azure or GCP cost analysis, update `.chainlit/mcp.json` with additional M
   "mcpServers": {
     "aws-billing": {
       "command": "uvx",
-      "args": ["awslabs-cost-explorer-mcp-server"]
-    },
-    "azure-costs": {
-      "command": "uvx",
-      "args": ["azure-cost-mcp-server"]
-    },
-    "gcp-billing": {
-      "command": "uvx",
-      "args": ["gcp-billing-mcp-server"]
+      "args": ["--from", "awslabs-cost-explorer-mcp-server", "awslabs.cost-explorer-mcp-server"],
+      "env": {
+        "AWS_REGION": "us-east-1"
+      }
     }
   }
 }
