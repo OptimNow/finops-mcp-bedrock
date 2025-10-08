@@ -8,12 +8,12 @@ import chainlit as cl
 from loguru import logger
 from typing import cast
 from langchain.tools import StructuredTool
-from langchain_core.messages import AIMessageChunk
 from langchain_core.runnables import RunnableConfig
 from langchain_mcp_adapters.tools import load_mcp_tools
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.prebuilt import create_react_agent
-from mcp import ClientSession
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
 
 cl.enable_mcp = True
 
@@ -39,10 +39,48 @@ from src.utils.bedrock import get_chat_model
 from src.utils.models import ModelId
 from src.utils.stream import stream_to_chainlit
 
-# Global MCP connection management
+# Global MCP connection - initialize once at startup
+_mcp_client_context = None
+_mcp_session_context = None
+_mcp_session = None
 _mcp_tools = []
 _mcp_ready = False
-_mcp_task = None
+
+
+async def initialize_mcp():
+    """Initialize MCP connection once at startup."""
+    global _mcp_client_context, _mcp_session_context, _mcp_session, _mcp_tools, _mcp_ready
+    
+    if _mcp_session is not None:
+        return  # Already initialized
+    
+    try:
+        logger.info("🔌 Initializing MCP connection...")
+        
+        server_params = StdioServerParameters(
+            command="uvx",
+            args=["--from", "awslabs-cost-explorer-mcp-server", "awslabs.cost-explorer-mcp-server"],
+            env={"AWS_REGION": os.getenv("AWS_REGION", "us-east-1")}
+        )
+        
+        # Create and enter context managers
+        _mcp_client_context = stdio_client(server_params)
+        read, write = await _mcp_client_context.__aenter__()
+        
+        _mcp_session_context = ClientSession(read, write)
+        _mcp_session = await _mcp_session_context.__aenter__()
+        
+        await _mcp_session.initialize()
+        _mcp_tools = await load_mcp_tools(_mcp_session)
+        _mcp_ready = True
+        
+        logger.info(f"✅ MCP ready! Loaded {len(_mcp_tools)} tools")
+        for tool in _mcp_tools:
+            logger.info(f"  - {tool.name}")
+            
+    except Exception as e:
+        logger.exception("❌ MCP initialization failed")
+        _mcp_ready = False
 
 
 def base_tools():
@@ -67,66 +105,25 @@ def build_agent(tools: list) -> CompiledStateGraph:
     return create_react_agent(model, tools)
 
 
-async def initialize_mcp_background():
-    """Initialize MCP connection in background."""
-    global _mcp_tools, _mcp_ready
-    
-    try:
-        logger.info("🔌 Initializing MCP connection in background...")
-        from mcp import StdioServerParameters
-        from mcp.client.stdio import stdio_client
-        
-        server_params = StdioServerParameters(
-            command="uvx",
-            args=["--from", "awslabs-cost-explorer-mcp-server", "awslabs.cost-explorer-mcp-server"],
-            env={"AWS_REGION": os.getenv("AWS_REGION", "us-east-1")}
-        )
-        
-        async with asyncio.timeout(60):
-            async with stdio_client(server_params) as (read, write):
-                async with ClientSession(read, write) as session:
-                    await session.initialize()
-                    _mcp_tools = await load_mcp_tools(session)
-                    _mcp_ready = True
-                    
-                    logger.info(f"✅ MCP ready! Loaded {len(_mcp_tools)} tools")
-                    for tool in _mcp_tools:
-                        logger.info(f"  - {tool.name}")
-                    
-                    # Keep session alive
-                    await asyncio.Event().wait()
-        
-    except asyncio.TimeoutError:
-        logger.error("❌ MCP initialization timed out")
-        _mcp_ready = False
-    except Exception as e:
-        logger.exception("❌ MCP initialization failed")
-        _mcp_ready = False
-
-
 @cl.on_chat_start
 async def on_chat_start():
-    global _mcp_task
-    
     cl.user_session.set("chat_messages", [])
     
-    # Start MCP initialization in background if not started
-    if _mcp_task is None:
-        _mcp_task = asyncio.create_task(initialize_mcp_background())
-        logger.info("⏳ MCP initialization started in background...")
+    # Initialize MCP on first connection
+    await initialize_mcp()
     
-    # Use whatever tools are available
+    # Build agent with all available tools
     current_tools = base_tools() + _mcp_tools
+    logger.info(f"Building agent with {len(current_tools)} total tools ({len(_mcp_tools)} from MCP)")
+    
     agent = build_agent(current_tools)
     cl.user_session.set("agent", agent)
     
     # Send welcome message
     if _mcp_ready:
-        message = f"👋 Welcome to the **OptimNow FinOps Assistant**!\n\n✅ Connected to AWS Billing MCP with {len(_mcp_tools)} tools."
-    elif _mcp_task.done():
-        message = "👋 Welcome to the **OptimNow FinOps Assistant**!\n\n⚠️ MCP connection failed. Running with basic tools only."
+        message = f"👋 Welcome to the **OptimNow FinOps Assistant**!\n\n✅ Connected to AWS Billing MCP with {len(_mcp_tools)} tools.\n\nYou can now ask questions about your AWS costs!"
     else:
-        message = "👋 Welcome to the **OptimNow FinOps Assistant**!\n\n⏳ Connecting to AWS Billing MCP... Cost queries will be available shortly."
+        message = "👋 Welcome to the **OptimNow FinOps Assistant**!\n\n⚠️ MCP connection failed. Running with visualization tools only."
     
     await cl.Message(content=message).send()
 
