@@ -7,7 +7,7 @@
 In this tutorial, you'll deploy an AI-powered FinOps assistant that allows you to analyze AWS costs using natural language. By the end, you'll have:
 
 - A **Chainlit chat interface** running on an EC2 instance
-- Integration with **Amazon Bedrock** (using Titan and Nova models)
+- Integration with **Amazon Bedrock** (using Titan and Claude Sonnet 3.5 models)
 - Connection to the **AWS Billing & Cost Management MCP server** for cost analysis
 - **Data visualization capabilities** - generate charts, graphs, and diagrams from your cost data
 - A working chatbot that can answer questions like:
@@ -24,10 +24,10 @@ This tutorial uses:
 
 - **EC2 instance**: Provides a self-contained environment where all processing happens within your AWS boundaries - no data leaves your infrastructure
 - **Model Context Protocol (MCP)**: Enables the LLM to securely access AWS cost data through standardized tools
-- **Amazon Bedrock**: Provides managed access to foundation models (Titan, Nova) without using public LLMs or sending data to third-party services
+- **Amazon Bedrock**: Provides managed access to foundation models (Titan, Claude Sonnet 3.5) without using public LLMs or sending data to third-party services
 - **Chainlit**: Offers a ready-to-use chat interface without building a custom UI
 
-**Key security benefit**: Your billing data never leaves your EC2 instance. The LLM runs in Bedrock (within AWS), the MCP server runs locally on EC2, and all cost data stays within your AWS account boundaries.
+**Key security benefit**: Your billing data doesn't leave AWS, and only leaves your EC2 instance to reach Bedrock, where the LLM runs in Bedrock (within AWS). The MCP server runs locally on EC2, and all cost data stays within your AWS account boundaries.
 
 **Extensibility**: You can easily add more MCP servers to extend functionality:
 - Additional AWS services (Compute Optimizer, Trusted Advisor, CloudWatch)
