@@ -494,17 +494,17 @@ source .venv/bin/activate
 After activation, your prompt will change to:
 
 ```
-(.venv) [ec2-user@ip-172-31-12-34 finops-mcp-bedrock]$
+(finops-mcp-bedrock) [ec2-user@ip-172-31-12-34 finops-mcp-bedrock]$
 ```
 
-The `(.venv)` prefix indicates the virtual environment is active.
+The `(finops-mcp-bedrock)` prefix indicates the virtual environment is active.
 
 ⚠️ **Important**: You need to activate this environment **every time** you start a new SSH session. If you don't see `(.venv)`, run this command again.
 
 ✅ **Verification**:
 
-- Your prompt shows `(.venv)` at the start
-- Run `which python` - it should show: `/home/ec2-user/finops-mcp-bedrock/.venv/bin/python`
+- Your prompt shows `(finops-mcp-bedrock)` at the start
+- Run `which python` - it should show: `~/finops-mcp-bedrock/.venv/bin/python`
 
 ------
 
@@ -590,14 +590,12 @@ cat .chainlit/mcp.json
 
 ```json
 {
-  "servers": {
+  "mcpServers": {
     "aws-billing": {
-      "type": "stdio",
       "command": "uvx",
-      "args": ["awslabs.billing-cost-management-mcp-server@latest"],
+      "args": ["--from", "awslabs-cost-explorer-mcp-server", "awslabs.cost-explorer-mcp-server"],
       "env": {
-        "AWS_REGION": "us-east-1",
-        "AWS_PROFILE": "default"
+        "AWS_REGION": "us-east-1"
       }
     }
   }
