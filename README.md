@@ -25,6 +25,24 @@ The UI is powered by **Chainlit**, giving you a chat interface where you can:
 - **Multi-Cloud Ready**: Extend with additional MCP servers for Azure and GCP cost analysis
 - **Interactive Chat Interface**: User-friendly Chainlit UI for natural language queries
 
+
+
+## Security & Guardrails
+
+This application implements AWS Bedrock Guardrails to ensure secure and appropriate interactions:
+
+- **Content Filtering**: Blocks harmful content including hate speech, violence, and inappropriate material
+- **Prompt Injection Protection**: Defends against prompt attack attempts at high threshold
+- **PII Protection**: Automatically filters sensitive information (credentials, SSNs, API keys)
+- **Topic Restrictions**: Keeps conversations focused on cloud cost management and FinOps
+- **Scope Limitation**: Restricts operations to read-only billing and cost analysis APIs
+
+All conversations are monitored through Bedrock Guardrails to maintain professional, secure, and purpose-focused interactions. The guardrail configuration can be customized based on your organization's security requirements.
+
+For detailed guardrail setup instructions, see [INSTALL.md](INSTALL.md#section-9-configure-bedrock-guardrails-optional).
+
+
+
 ---
 
 ## Prerequisites
