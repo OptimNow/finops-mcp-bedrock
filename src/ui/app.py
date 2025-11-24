@@ -40,17 +40,20 @@ from src.utils.bedrock import get_chat_model
 from src.utils.models import ModelId
 from src.utils.stream import stream_to_chainlit
 
-# Global MCP state
+# ============================================================================
+# Global MCP state - DÉCLARATION UNIQUE ICI
+# ============================================================================
 _mcp_tools = []
 _mcp_ready = False
+_mcp_connections = []  # Liste pour stocker les connexions actives
 
 
 async def initialize_mcp():
     """
     Initialize MCP tools from all servers defined in CHAINLIT_MCP_CONFIG.
-    Creates a separate session for each MCP server.
+    Creates a separate session for each MCP server and keeps connections alive.
     """
-    global _mcp_tools, _mcp_ready
+    global _mcp_tools, _mcp_ready, _mcp_connections
 
     # If already initialized, skip
     if _mcp_ready:
@@ -123,6 +126,15 @@ async def initialize_mcp():
             # Load tools from this session
             server_tools = await load_mcp_tools(session)
 
+            # Store connection to keep it alive (IMPORTANT!)
+            _mcp_connections.append({
+                'name': server_name,
+                'client_context': client_context,
+                'session_context': session_context,
+                'session': session,
+                'tools': server_tools
+            })
+
             logger.info(f"✅ Server '{server_name}' loaded with {len(server_tools)} tools:")
             for tool in server_tools:
                 logger.info(f"   - {tool.name}")
@@ -139,11 +151,31 @@ async def initialize_mcp():
     logger.info("=" * 60)
     logger.info(f"✅ MCP initialization complete!")
     logger.info(f"   Total servers attempted: {len(servers)}")
+    logger.info(f"   Total servers connected: {len(_mcp_connections)}")
     logger.info(f"   Total tools loaded: {len(_mcp_tools)}")
     logger.info("=" * 60)
 
     if not _mcp_ready:
         logger.warning("⚠️  No MCP tools loaded successfully")
+
+
+async def cleanup_mcp():
+    """Clean up MCP connections on shutdown."""
+    global _mcp_connections
+    
+    logger.info("🔌 Cleaning up MCP connections...")
+    
+    for connection in _mcp_connections:
+        try:
+            server_name = connection['name']
+            await connection['session_context'].__aexit__(None, None, None)
+            await connection['client_context'].__aexit__(None, None, None)
+            logger.info(f"✅ Closed connection to '{server_name}'")
+        except Exception as e:
+            logger.error(f"❌ Error closing '{server_name}': {e}")
+    
+    _mcp_connections.clear()
+
 
 def base_tools():
     """Return base visual tools."""
@@ -240,3 +272,9 @@ async def on_message(message: cl.Message):
         await msg.stream_token(f"\n\n❌ Error: {str(e)}")
     
     await msg.update()
+
+
+@cl.on_chat_end
+async def on_chat_end():
+    """Clean up MCP connections when chat ends."""
+    await cleanup_mcp()
