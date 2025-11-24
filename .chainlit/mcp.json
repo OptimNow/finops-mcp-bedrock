@@ -2,9 +2,23 @@
   "mcpServers": {
     "aws-billing": {
       "command": "uvx",
-      "args": ["--from", "awslabs-cost-explorer-mcp-server", "awslabs.cost-explorer-mcp-server"],
+      "args": [
+        "--from",
+        "awslabs-cost-explorer-mcp-server",
+        "awslabs.cost-explorer-mcp-server"
+      ],
       "env": {
         "AWS_REGION": "us-east-1"
+      }
+    },
+    "aws-api": {
+      "command": "uvx",
+      "args": [
+        "awslabs.aws-api-mcp-server@latest"
+      ],
+      "env": {
+        "AWS_REGION": "us-east-1",
+        "REQUIRE_MUTATION_CONSENT": "true"
       }
     }
   }
