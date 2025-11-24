@@ -47,8 +47,8 @@ _mcp_ready = False
 
 async def initialize_mcp():
     """
-    Initialize MCP tools from all servers defined in CHAINLIT_MCP_CONFIG (.chainlit/mcp.json).
-    Loads ALL servers declared under "mcpServers" (e.g. aws-billing, aws-api).
+    Initialize MCP tools from all servers defined in CHAINLIT_MCP_CONFIG.
+    Creates a separate session for each MCP server.
     """
     global _mcp_tools, _mcp_ready
 
@@ -94,7 +94,6 @@ async def initialize_mcp():
         command = server_cfg.get("command")
         args = server_cfg.get("args", [])
         env = server_cfg.get("env", {})
-        transport = server_cfg.get("transport", "stdio")
 
         logger.info(f"📡 Loading MCP server '{server_name}'...")
         logger.info(f"   Command: {command}")
@@ -105,21 +104,24 @@ async def initialize_mcp():
             continue
 
         try:
-            # Build connection config for langchain-mcp-adapters
-            connection = {
-                "transport": transport,
-                "command": command,
-                "args": args,
-            }
-            if env:
-                connection["env"] = env
-
-            # Load tools using langchain-mcp-adapters
-            server_tools = await load_mcp_tools(
-                session=None,
-                connection=connection,
-                server_name=server_name,
+            # Create server parameters
+            server_params = StdioServerParameters(
+                command=command,
+                args=args,
+                env=env
             )
+            
+            # Create MCP client connection
+            client_context = stdio_client(server_params)
+            read, write = await client_context.__aenter__()
+            
+            # Create and initialize session
+            session_context = ClientSession(read, write)
+            session = await session_context.__aenter__()
+            await session.initialize()
+            
+            # Load tools from this session
+            server_tools = await load_mcp_tools(session)
 
             logger.info(f"✅ Server '{server_name}' loaded with {len(server_tools)} tools:")
             for tool in server_tools:
@@ -142,7 +144,6 @@ async def initialize_mcp():
 
     if not _mcp_ready:
         logger.warning("⚠️  No MCP tools loaded successfully")
-
 
 def base_tools():
     """Return base visual tools."""
