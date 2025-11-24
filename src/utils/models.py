@@ -27,10 +27,11 @@ class InferenceConfig(BaseModel):
 
 class ModelId(str, Enum):
     """Model IDs for Bedrock."""
-    ANTHROPIC_CLAUDE_3_5_SONNET = 'anthropic.claude-3-5-sonnet-20241022-v2:0'
-    ANTHROPIC_CLAUDE_3_7_SONNET = 'anthropic.claude-3-7-sonnet-20250219-v1:0'
-    AMAZON_NOVA_PRO_V1 = 'amazon.nova-pro-v1:0'
-    AMAZON_NOVA_LITE_V1 = 'amazon.nova-lite-v1:0'
-    AMAZON_NOVA_MICRO_V1 = 'amazon.nova-micro-v1:0'
-    AMAZON_TITAN_TEXT_EXPRESS_V1 = 'amazon.titan-text-express-v1'
-    AMAZON_TITAN_TEXT_LITE_V1 = 'amazon.titan-text-lite-v1'
+    ANTHROPIC_CLAUDE_3_5_SONNET = "anthropic.claude-3-5-sonnet-20241022-v2:0"
+    ANTHROPIC_CLAUDE_3_7_SONNET = "anthropic.claude-3-7-sonnet-20250219-v1:0"
+    ANTHROPIC_CLAUDE_SONNET_4_5 = "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
+    AMAZON_NOVA_PRO_V1 = "amazon.nova-pro-v1:0"
+    AMAZON_NOVA_LITE_V1 = "amazon.nova-lite-v1:0"
+    AMAZON_NOVA_MICRO_V1 = "amazon.nova-micro-v1:0"
+    AMAZON_TITAN_TEXT_EXPRESS_V1 = "amazon.titan-text-express-v1"
+    AMAZON_TITAN_TEXT_LITE_V1 = "amazon.titan-text-lite-v1"

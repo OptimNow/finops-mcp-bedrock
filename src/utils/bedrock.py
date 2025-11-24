@@ -1,7 +1,9 @@
 import boto3
+import os
 import warnings
 from botocore.config import Config
 from langchain_aws.chat_models import ChatBedrockConverse
+from loguru import logger
 from src.utils.models import (
     BOTO3_CLIENT_WARNING,
     InferenceConfig,
@@ -40,50 +42,41 @@ def get_bedrock_client(region_name: str = 'us-east-1') -> BedrockRuntimeClient:
 
 
 def get_chat_model(
-    model_id: ModelId,
-    inference_config: InferenceConfig | None = None,
-    client: BedrockRuntimeClient | None = None,
-    boto3_kwargs: dict[str, Any] | None = None,
-    cross_region: bool = True,
-    thinking_config: Optional[ThinkingConfig] = None,
+    model_id: str = ModelId.ANTHROPIC_CLAUDE_SONNET_4_5,
+    temperature: float = 0.0,
+    max_tokens: int = 4096,
 ) -> ChatBedrockConverse:
-    """Get a ChatBedrockConverse model.
-
-    Args:
-        model_id (ModelId): Model ID
-        inference_config (InferenceConfig | None): Inference config
-        client (BedrockRuntimeClient | None): Bedrock client
-        boto3_kwargs (dict[str, Any] | None): Keyword arguments for boto3
-        cross_region (bool): Whether to use cross-region inference (default: True)
-        thinking_config (ThinkingConfig | None): Thinking config
-
-    Returns:
-        ChatBedrockConverse: ChatBedrockConverse model
     """
-    # Add cross-region prefix if necessary and convert Enum to string
-    _model_id = f'us.{model_id.value}' if cross_region else model_id.value
-    if client and boto3_kwargs:
-        warnings.warn(BOTO3_CLIENT_WARNING)
-    _client = client or get_bedrock_client(**(boto3_kwargs or {}))
-
-    additional_model_request_fields = {}
-    # Add thinking config if provided
-    if thinking_config:
-        additional_model_request_fields['thinking'] = thinking_config.model_dump()
-
-    # Create the ChatBedrockConverse with appropriate parameters
-    if inference_config is None:
-        return ChatBedrockConverse(
-            model=_model_id,
-            client=_client,
-            additional_model_request_fields=additional_model_request_fields,
-        )
-
-    # If inference_config is provided, include temperature and max_tokens
+    Get a ChatBedrockConverse model instance.
+    For Claude 4.x models, use inference profiles (global.anthropic.*).
+    
+    Args:
+        model_id: The model ID or inference profile ID to use
+        temperature: Sampling temperature (0.0 = deterministic)
+        max_tokens: Maximum tokens in response
+        
+    Returns:
+        Configured ChatBedrockConverse instance
+    """
+    import boto3
+    
+    # Resolve model_id if it's still a class attribute reference
+    if hasattr(model_id, '__class__') and 'ModelId' in str(model_id.__class__):
+        logger.error(f"❌ model_id is not resolved: {model_id}")
+        raise ValueError(f"model_id must be a string, got: {type(model_id)}")
+    
+    # Inference profiles must use us-east-1 endpoint
+    bedrock_runtime = boto3.client(
+        service_name="bedrock-runtime",
+        region_name="us-east-1",
+    )
+    
+    logger.info(f"🤖 Using model: {model_id}")
+    logger.info(f"   Temperature: {temperature}, Max tokens: {max_tokens}")
+    
     return ChatBedrockConverse(
-        model=_model_id,
-        client=_client,
-        temperature=inference_config.temperature,
-        max_tokens=inference_config.max_tokens,
-        additional_model_request_fields=additional_model_request_fields,
+        client=bedrock_runtime,
+        model=model_id,
+        temperature=temperature,
+        max_tokens=max_tokens,
     )

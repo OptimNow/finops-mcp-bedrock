@@ -17,8 +17,7 @@
         "awslabs.aws-api-mcp-server@latest"
       ],
       "env": {
-        "AWS_REGION": "us-east-1",
-        "REQUIRE_MUTATION_CONSENT": "true"
+        "AWS_REGION": "us-east-1"
       }
     }
   }
