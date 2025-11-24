@@ -14,6 +14,7 @@ from langgraph.graph.state import CompiledStateGraph
 from langgraph.prebuilt import create_react_agent
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
+
 ENABLE_MCP = os.getenv("CHAINLIT_ENABLE_MCP", "true").lower() == "true"
 cl.enable_mcp = True
 
@@ -39,145 +40,21 @@ from src.utils.bedrock import get_chat_model
 from src.utils.models import ModelId
 from src.utils.stream import stream_to_chainlit
 
-# Global MCP connections - we now support multiple servers
-_mcp_connections = {}  # Dict to store multiple server connections
+# Global MCP state
 _mcp_tools = []
 _mcp_ready = False
 
 
-async def load_mcp_server(server_name: str, server_config: dict) -> list:
-    """
-    Load a single MCP server and return its tools.
-    
-    Args:
-        server_name: Name of the MCP server (e.g., 'aws-billing')
-        server_config: Configuration dict with 'command', 'args', 'env'
-    
-    Returns:
-        List of tools from this server
-    """
-    try:
-        logger.info(f"📡 Loading MCP server '{server_name}'...")
-        logger.info(f"   Command: {server_config['command']}")
-        logger.info(f"   Args: {server_config['args']}")
-        
-        # Create server parameters
-        server_params = StdioServerParameters(
-            command=server_config['command'],
-            args=server_config['args'],
-            env=server_config.get('env', {})
-        )
-        
-        # Create and enter context managers
-        client_context = stdio_client(server_params)
-        read, write = await client_context.__aenter__()
-        
-        session_context = ClientSession(read, write)
-        session = await session_context.__aenter__()
-        
-        # Initialize session
-        await session.initialize()
-        
-        # Load tools from this server
-        tools = await load_mcp_tools(session)
-        
-        # Store connection info for cleanup later
-        _mcp_connections[server_name] = {
-            'client_context': client_context,
-            'session_context': session_context,
-            'session': session,
-            'tools': tools
-        }
-        
-        logger.info(f"✅ Server '{server_name}' loaded with {len(tools)} tools:")
-        for tool in tools:
-            logger.info(f"   - {tool.name}")
-        
-        return tools
-        
-    except Exception as e:
-        logger.error(f"❌ Failed to load server '{server_name}': {str(e)}")
-        logger.exception("Full error:")
-        return []
-
-
-async def initialize_mcp():
-    """Initialize all MCP servers from config file."""
-    global _mcp_tools, _mcp_ready
-    
-    # Check if already initialized
-    if _mcp_connections:
-        logger.info("MCP already initialized, skipping...")
-        return
-    
-    try:
-        logger.info("=" * 60)
-        logger.info("🔌 Initializing MCP servers...")
-        logger.info("=" * 60)
-        
-        # Load MCP configuration
-        mcp_config_path = os.getenv('CHAINLIT_MCP_CONFIG', '.chainlit/mcp.json')
-        
-        if not os.path.exists(mcp_config_path):
-            logger.error(f"❌ MCP config file not found: {mcp_config_path}")
-            _mcp_ready = False
-            return
-        
-        with open(mcp_config_path) as f:
-            mcp_config = json.load(f)
-        
-        servers = mcp_config.get('mcpServers', {})
-        logger.info(f"Found {len(servers)} MCP server(s) in config")
-        
-        # Load each server
-        all_tools = []
-        for server_name, server_config in servers.items():
-            tools = await load_mcp_server(server_name, server_config)
-            all_tools.extend(tools)
-        
-        _mcp_tools = all_tools
-        _mcp_ready = len(all_tools) > 0
-        
-        logger.info("=" * 60)
-        logger.info(f"✅ MCP initialization complete!")
-        logger.info(f"   Total servers: {len(_mcp_connections)}")
-        logger.info(f"   Total tools: {len(_mcp_tools)}")
-        logger.info("=" * 60)
-        
-        if not _mcp_ready:
-            logger.warning("⚠️  No MCP tools loaded successfully")
-            
-    except Exception as e:
-        logger.exception("❌ MCP initialization failed")
-        _mcp_ready = False
-
-
-async def cleanup_mcp():
-    """Clean up all MCP connections on shutdown."""
-    logger.info("🔌 Cleaning up MCP connections...")
-    
-    for server_name, connection in _mcp_connections.items():
-        try:
-            # Exit context managers in reverse order
-            await connection['session_context'].__aexit__(None, None, None)
-            await connection['client_context'].__aexit__(None, None, None)
-            logger.info(f"✅ Closed connection to '{server_name}'")
-        except Exception as e:
-            logger.error(f"❌ Error closing '{server_name}': {e}")
-    
-    _mcp_connections.clear()
-
 async def initialize_mcp():
     """
-    Initialize MCP tools from all servers defined in the CHAINLIT_MCP_CONFIG (.chainlit/mcp.json).
-
-    This version loads ALL servers declared under "mcpServers" (e.g. aws-billing, aws-api),
-    instead of only one.
+    Initialize MCP tools from all servers defined in CHAINLIT_MCP_CONFIG (.chainlit/mcp.json).
+    Loads ALL servers declared under "mcpServers" (e.g. aws-billing, aws-api).
     """
     global _mcp_tools, _mcp_ready
 
-    # If already initialized, do nothing
+    # If already initialized, skip
     if _mcp_ready:
+        logger.info("MCP already initialized, skipping...")
         return
 
     if not ENABLE_MCP:
@@ -186,9 +63,11 @@ async def initialize_mcp():
         _mcp_ready = False
         return
 
-    logger.info("🔌 Initializing MCP connection...")
+    logger.info("=" * 60)
+    logger.info("🔌 Initializing MCP servers...")
+    logger.info("=" * 60)
 
-    # 1) Lire le chemin de config MCP
+    # Load MCP configuration file
     mcp_config_path = os.getenv("CHAINLIT_MCP_CONFIG", ".chainlit/mcp.json")
     logger.info(f"Using MCP config file: {mcp_config_path}")
 
@@ -203,35 +82,30 @@ async def initialize_mcp():
 
     servers = mcp_config.get("mcpServers", {})
     if not servers:
-        logger.warning("No 'mcpServers' section found in MCP config. No MCP tools will be loaded.")
+        logger.warning("No 'mcpServers' section found in MCP config.")
         _mcp_tools = []
         _mcp_ready = False
         return
 
     all_tools = []
 
-    # 2) Boucler sur TOUS les serveurs MCP
+    # Load each MCP server
     for server_name, server_cfg in servers.items():
         command = server_cfg.get("command")
         args = server_cfg.get("args", [])
         env = server_cfg.get("env", {})
-        transport = server_cfg.get("transport", "stdio")  # défaut raisonnable
+        transport = server_cfg.get("transport", "stdio")
 
-        logger.info(
-            f"Loading MCP server '{server_name}' with command '{command}' and args {args}"
-        )
+        logger.info(f"📡 Loading MCP server '{server_name}'...")
+        logger.info(f"   Command: {command}")
+        logger.info(f"   Args: {args}")
 
         if not command:
-            logger.warning(
-                f"Skipping MCP server '{server_name}' because 'command' is missing."
-            )
+            logger.warning(f"Skipping '{server_name}' - missing 'command'")
             continue
 
         try:
-            # Import du bon module
-            from langchain_mcp_adapters.tools import load_mcp_tools
-
-            # Construire la "Connection" attendue par langchain_mcp_adapters
+            # Build connection config for langchain-mcp-adapters
             connection = {
                 "transport": transport,
                 "command": command,
@@ -240,37 +114,34 @@ async def initialize_mcp():
             if env:
                 connection["env"] = env
 
-            # On laisse load_mcp_tools créer la session à partir de connection
+            # Load tools using langchain-mcp-adapters
             server_tools = await load_mcp_tools(
                 session=None,
                 connection=connection,
                 server_name=server_name,
             )
 
-            logger.info(
-                f"Loaded {len(server_tools)} tools from MCP server '{server_name}'"
-            )
+            logger.info(f"✅ Server '{server_name}' loaded with {len(server_tools)} tools:")
+            for tool in server_tools:
+                logger.info(f"   - {tool.name}")
+            
             all_tools.extend(server_tools)
 
         except Exception as e:
-            logger.error(f"Error loading MCP server '{server_name}': {e}")
+            logger.error(f"❌ Failed to load server '{server_name}': {str(e)}")
+            logger.exception("Full error:")
 
     _mcp_tools = all_tools
-    _mcp_ready = True if _mcp_tools else False
+    _mcp_ready = len(all_tools) > 0
 
-    logger.info(f"✅ MCP ready! Loaded {len(_mcp_tools)} tools from {len(servers)} server(s)")
+    logger.info("=" * 60)
+    logger.info(f"✅ MCP initialization complete!")
+    logger.info(f"   Total servers attempted: {len(servers)}")
+    logger.info(f"   Total tools loaded: {len(_mcp_tools)}")
+    logger.info("=" * 60)
 
-    # Log détaillé des tools chargés
-    if not _mcp_tools:
-        logger.warning("No MCP tools loaded successfully.")
-        return
-
-    logger.info("MCP tools loaded (name | first 80 chars of description):")
-    for t in _mcp_tools:
-        name = getattr(t, "name", str(t))
-        desc = getattr(t, "description", "") or ""
-        logger.info(f"  - {name} | {desc[:80]}")
-
+    if not _mcp_ready:
+        logger.warning("⚠️  No MCP tools loaded successfully")
 
 
 def base_tools():
@@ -294,25 +165,20 @@ def build_agent(tools: list) -> CompiledStateGraph:
     model = get_chat_model(model_id=ModelId.ANTHROPIC_CLAUDE_3_5_SONNET)
     return create_react_agent(model, tools)
 
+
 def build_welcome_message(current_tools, mcp_tools, mcp_ready: bool) -> str:
-    """
-    Build a dynamic welcome message based on the tools that are actually loaded.
-    - current_tools: all tools available to the agent (local + MCP)
-    - mcp_tools: only the tools coming from MCP servers
-    - mcp_ready: whether MCP initialization succeeded
-    """
+    """Build a dynamic welcome message based on loaded tools."""
     lines = []
-    lines.append("Welcome to the **OptimNow FinOps Assistant**!")
+    lines.append("👋 Welcome to the **OptimNow FinOps Assistant**!")
     lines.append("")
 
     if not mcp_ready or not mcp_tools:
-        # MCP not available or no MCP tools loaded
         lines.append("⚠️ MCP connection is not available. Running with local tools only.")
         lines.append("")
-        lines.append("You can still ask questions, but resource level actions and live billing data may be limited.")
+        lines.append("You can still ask questions, but AWS billing data access is limited.")
         return "\n".join(lines)
 
-    # MCP is ready
+    # MCP is ready - show available tools
     mcp_tool_names = sorted({getattr(t, "name", str(t)) for t in mcp_tools})
     all_tool_names = sorted({getattr(t, "name", str(t)) for t in current_tools})
     local_tool_names = sorted(set(all_tool_names) - set(mcp_tool_names))
@@ -332,8 +198,7 @@ def build_welcome_message(current_tools, mcp_tools, mcp_ready: bool) -> str:
             lines.append(f"- {name}")
         lines.append("")
 
-    lines.append("You can now ask questions about your AWS costs,")
-    lines.append("and run safe FinOps automation workflows like EBS gp2→gp3 optimization.")
+    lines.append("You can now ask questions about your AWS costs and billing!")
     return "\n".join(lines)
 
 
@@ -346,9 +211,7 @@ async def on_chat_start():
 
     # Build agent with all available tools
     current_tools = base_tools() + _mcp_tools
-    logger.info(
-        f"Building agent with {len(current_tools)} total tools ({len(_mcp_tools)} from MCP)"
-    )
+    logger.info(f"Building agent with {len(current_tools)} total tools ({len(_mcp_tools)} from MCP)")
 
     agent = build_agent(current_tools)
     cl.user_session.set("agent", agent)
@@ -356,8 +219,6 @@ async def on_chat_start():
     # Send dynamic welcome message
     message = build_welcome_message(current_tools, _mcp_tools, _mcp_ready)
     await cl.Message(content=message).send()
-
-
 
 
 @cl.on_message
@@ -378,8 +239,3 @@ async def on_message(message: cl.Message):
         await msg.stream_token(f"\n\n❌ Error: {str(e)}")
     
     await msg.update()
-
-@cl.on_chat_end
-async def on_chat_end():
-    """Clean up MCP connections when chat ends."""
-    await cleanup_mcp()
