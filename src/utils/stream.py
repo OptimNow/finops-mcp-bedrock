@@ -3,7 +3,7 @@ Streaming utilities for agent responses to Chainlit.
 """
 from typing import AsyncGenerator, List
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
-from langgraph.graph.graph import CompiledStateGraph
+from langgraph.graph.state import CompiledStateGraph
 from langchain_core.runnables import RunnableConfig
 from loguru import logger
 
