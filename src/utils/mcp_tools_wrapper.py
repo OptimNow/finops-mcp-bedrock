@@ -110,25 +110,19 @@ async def wrap_mcp_tool_with_consent(original_tool, tool_name: str, **kwargs) ->
             return f"❌ {error_msg}. The operation was cancelled and no changes were made to AWS infrastructure."
     
     # Execute the original tool
-    try:
-        logger.info(f"▶️ Executing tool: {tool_name}")
-        
-        # Call the original tool's invoke method
-        if hasattr(original_tool, 'ainvoke'):
-            result = await original_tool.ainvoke(kwargs)
-        elif hasattr(original_tool, 'invoke'):
-            result = original_tool.invoke(kwargs)
-        else:
-            # Direct async call
-            result = await original_tool.func(**kwargs)
-        
-        logger.info(f"✅ Tool {tool_name} executed successfully")
-        return result
-        
-    except Exception as e:
-        logger.error(f"❌ Error executing tool {tool_name}: {e}")
-        return f"❌ Error executing {tool_name}: {str(e)}"
-
+        try:
+            result = await tool.ainvoke(tool_input)
+            logger.info(f"✅ Tool {tool_name} executed successfully")
+            return result
+        except Exception as e:
+            error_msg = str(e)
+            logger.error(f"❌ Tool {tool_name} failed: {error_msg}")
+            
+            # Check if it's a permission error
+            if "UnauthorizedOperation" in error_msg or "not authorized" in error_msg.lower():
+                return f"❌ Permission Error: The current IAM role does not have permission to perform this operation. Error: {error_msg}"
+            else:
+                return f"❌ Error executing {tool_name}: {error_msg}"
 
 def wrap_mcp_tools(mcp_tools: list) -> list:
     """

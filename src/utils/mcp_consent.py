@@ -34,7 +34,7 @@ class ConsentManager:
 {details}
 ```
 
-This operation will modify your AWS infrastructure. 
+This operation will modify your AWS infrastructure.
 
 **Reply with "yes" to approve or "no" to deny.**
         """
@@ -51,7 +51,6 @@ This operation will modify your AWS infrastructure.
             
             if res:
                 user_response = res.get("output", "").strip().lower()
-                
                 if user_response in ["yes", "y", "approve", "ok"]:
                     logger.info(f"✅ User approved operation: {operation}")
                     await cl.Message(content="✅ Operation approved. Proceeding...").send()
@@ -70,36 +69,58 @@ This operation will modify your AWS infrastructure.
             # Default to deny on error
             await cl.Message(content=f"❌ Consent request failed: {str(e)}. Operation cancelled.").send()
             return False
+
+
+def is_mutation_operation(tool_name: str, tool_input: dict) -> bool:
+    """
+    Determine if a tool call is a mutation operation.
     
-    @staticmethod
-    def is_mutation_operation(tool_name: str, arguments: dict) -> tuple[bool, str]:
-        """
-        Check if a tool operation is a mutation (write/modify operation).
+    Mutation operations modify AWS infrastructure (create, modify, delete, stop, start).
+    Read-only operations (describe, list, get) do NOT require consent.
+    """
+    logger.info(f"🔍 Checking mutation for tool: {tool_name}")
+    logger.info(f"🔍 Tool input: {tool_input}")
+    
+    # AWS CLI commands that are mutations
+    mutation_keywords = [
+        'create', 'delete', 'modify', 'update', 'put', 'attach', 'detach',
+        'start', 'stop', 'terminate', 'reboot', 'associate', 'disassociate',
+        'enable', 'disable', 'register', 'deregister'
+    ]
+    
+    # Read-only operations - explicitly allowed without consent
+    readonly_keywords = [
+        'describe', 'list', 'get', 'show'
+    ]
+    
+    # Check if it's a call_aws operation
+    if tool_name == "call_aws":
+        # Try different possible keys for the command
+        command = (
+            tool_input.get("command", "") or 
+            tool_input.get("aws_command", "") or
+            tool_input.get("cli_command", "") or
+            str(tool_input)
+        ).lower()
         
-        Args:
-            tool_name: Name of the MCP tool
-            arguments: Arguments being passed to the tool
-            
-        Returns:
-            tuple: (is_mutation: bool, operation_description: str)
-        """
-        # AWS API MCP tool
-        if tool_name == "call_aws":
-            cli_command = arguments.get("cli_command", "")
-            
-            # List of AWS CLI commands that are mutations
-            mutation_keywords = [
-                "create", "delete", "modify", "update", "put", "terminate",
-                "stop", "start", "reboot", "attach", "detach", "associate",
-                "disassociate", "enable", "disable", "configure"
-            ]
-            
-            cli_lower = cli_command.lower()
-            for keyword in mutation_keywords:
-                if keyword in cli_lower:
-                    return True, f"AWS CLI: {cli_command}"
-            
-            return False, ""
+        logger.info(f"🔍 Extracted command: {command}")
         
-        # Add other MCP tools that might need consent here
-        return False, ""
+        # First check if it's explicitly read-only
+        for keyword in readonly_keywords:
+            if keyword in command:
+                logger.info(f"🟢 Read-only operation detected (keyword: {keyword})")
+                return False
+        
+        # Then check if it's a mutation
+        for keyword in mutation_keywords:
+            if keyword in command:
+                logger.info(f"🔴 Mutation operation detected (keyword: {keyword})")
+                return True
+        
+        # If no mutation keywords found, assume read-only
+        logger.info(f"🟢 No mutation keywords found, treating as read-only")
+        return False
+    
+    # For non-AWS operations, default to no consent needed
+    logger.info(f"🟢 Non-AWS operation, no consent needed")
+    return False

@@ -1,92 +1,112 @@
-"""Streaming utilities for LangGraph agent responses."""
-
-from typing import AsyncGenerator
-from langchain_core.messages import AIMessage, HumanMessage
+"""
+Streaming utilities for agent responses to Chainlit.
+"""
+from typing import AsyncGenerator, List
+from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
+from langgraph.graph.graph import CompiledStateGraph
 from langchain_core.runnables import RunnableConfig
-from langgraph.graph.state import CompiledStateGraph
 from loguru import logger
 
 
 async def stream_to_chainlit(
     agent: CompiledStateGraph,
     user_message: str,
-    chat_messages: list,
+    chat_messages: List[BaseMessage],
     config: RunnableConfig
 ) -> AsyncGenerator[str, None]:
     """
-    Stream agent responses to Chainlit.
+    Stream agent responses to Chainlit with improved text extraction.
     
     Args:
-        agent: The compiled LangGraph agent
-        user_message: The user's input message
-        chat_messages: History of chat messages
-        config: Runnable config with callbacks
-    
+        agent: The compiled agent graph
+        user_message: User's input message
+        chat_messages: Previous chat history
+        config: Runnable configuration
+        
     Yields:
-        str: Tokens from the agent's response
+        Text chunks to be streamed to Chainlit
     """
-    # Add user message to history
-    chat_messages.append(HumanMessage(content=user_message))
-    
     logger.info(f"🔄 Starting agent stream for message: {user_message[:50]}...")
     
-    # Track if we've seen the final output
-    final_output_received = False
     token_count = 0
+    final_output_received = False
+    last_message = None
     
-    # Stream agent response
-    async for event in agent.astream_events(
-        {"messages": chat_messages},
-        config=config,
-        version="v2"
-    ):
-        kind = event.get("event")
-        logger.debug(f"Event: {kind}")
-        
-        # Stream text tokens
-        if kind == "on_chat_model_stream":
-            content = event.get("data", {}).get("chunk", {})
+    # Build input
+    input_messages = chat_messages + [HumanMessage(content=user_message)]
+    
+    try:
+        async for event in agent.astream_events(
+            {"messages": input_messages},
+            config=config,
+            version="v2"
+        ):
+            kind = event.get("event")
+            logger.debug(f"Event: {kind}")
             
-            if hasattr(content, "content"):
-                chunk_content = content.content
+            # Handle token streaming
+            if kind == "on_chat_model_stream":
+                chunk = event.get("data", {}).get("chunk", {})
                 
-                # Handle list format
-                if isinstance(chunk_content, list):
-                    for item in chunk_content:
-                        if isinstance(item, dict) and item.get("type") == "text":
-                            text = item.get("text", "")
-                            if text:
-                                token_count += 1
-                                yield text
-                # Handle string format
-                elif isinstance(chunk_content, str) and chunk_content:
-                    token_count += 1
-                    yield chunk_content
-        
-        # Capture final output with complete message history
-        elif kind == "on_chain_end":
-            logger.info(f"Chain ended, final_output_received={final_output_received}")
-            if not final_output_received:
+                # Extract content from chunk
+                content = None
+                if hasattr(chunk, 'content'):
+                    content = chunk.content
+                elif isinstance(chunk, dict):
+                    content = chunk.get('content')
+                
+                # Handle different content formats
+                if content:
+                    # If content is a list of blocks (Claude's format)
+                    if isinstance(content, list):
+                        for block in content:
+                            if isinstance(block, dict) and block.get("type") == "text":
+                                text = block.get("text", "")
+                                if text:
+                                    token_count += 1
+                                    if token_count % 50 == 0:
+                                        logger.debug(f"📝 Streamed {token_count} tokens so far...")
+                                    yield text
+                    # If content is a simple string
+                    elif isinstance(content, str):
+                        token_count += 1
+                        if token_count % 50 == 0:
+                            logger.debug(f"📝 Streamed {token_count} tokens so far...")
+                        yield content
+            
+            # Track final output
+            elif kind == "on_chain_end":
+                final_output_received = True
                 output = event.get("data", {}).get("output", {})
-                logger.info(f"Output type: {type(output)}, has messages: {'messages' in output if isinstance(output, dict) else 'N/A'}")
+                logger.info(f"Chain ended, final_output_received={final_output_received}")
+                logger.info(f"Output type: {type(output)}, has messages: {hasattr(output, 'get') and 'messages' in output if isinstance(output, dict) else 'N/A'}")
                 
+                # Extract final message if available
                 if isinstance(output, dict) and "messages" in output:
-                    # Replace chat history with the complete history from agent
-                    new_messages = output["messages"]
-                    if new_messages and len(new_messages) > len(chat_messages):
-                        # Get the last AI message
-                        last_message = new_messages[-1]
-                        if isinstance(last_message, AIMessage):
-                            logger.info(f"✅ Got final AI message: {last_message.content[:100]}...")
-                            
-                            # If no tokens were streamed, yield the complete message now
-                            if token_count == 0 and last_message.content:
-                                logger.warning("⚠️ No tokens streamed, yielding complete message")
-                                yield last_message.content
-                        
-                        # Update chat history
-                        chat_messages.clear()
-                        chat_messages.extend(new_messages)
-                        final_output_received = True
-    
-    logger.info(f"✅ Stream complete. Total tokens: {token_count}, Final output received: {final_output_received}")
+                    messages = output["messages"]
+                    if messages and len(messages) > 0:
+                        last_msg = messages[-1]
+                        if isinstance(last_msg, AIMessage):
+                            last_message = last_msg
+                            logger.info(f"✅ Got final AI message: {str(last_msg.content)[:200]}...")
+        
+        # CRITICAL: If no tokens were streamed but we have a final message, yield it now
+        if token_count == 0 and last_message and last_message.content:
+            logger.warning(f"⚠️ No tokens streamed but final message exists ({len(str(last_message.content))} chars), yielding now...")
+            
+            # Extract text from content
+            if isinstance(last_message.content, str):
+                yield last_message.content
+            elif isinstance(last_message.content, list):
+                # Handle list of content blocks
+                for block in last_message.content:
+                    if isinstance(block, dict) and block.get("type") == "text":
+                        yield block.get("text", "")
+                    elif isinstance(block, str):
+                        yield block
+        
+        logger.info(f"✅ Stream complete. Total tokens: {token_count}, Final output received: {final_output_received}")
+        
+    except Exception as e:
+        logger.exception(f"❌ Error during streaming: {str(e)}")
+        yield f"\n\n❌ Error: {str(e)}"
