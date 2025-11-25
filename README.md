@@ -25,7 +25,90 @@ The UI is powered by **Chainlit**, giving you a chat interface where you can:
 - **Multi-Cloud Ready**: Extend with additional MCP servers for Azure and GCP cost analysis
 - **Interactive Chat Interface**: User-friendly Chainlit UI for natural language queries
 
+## 🔥 Multi-MCP Integration with Intelligent Consent Management
 
+### What's New
+
+This FinOps assistant integrates **two MCP servers simultaneously** to provide comprehensive AWS cost analysis:
+
+- **AWS Cost Explorer MCP**: Historical billing data (24-48h latency)
+- **AWS API MCP**: Real-time infrastructure state (< 1s latency)
+
+### Smart Orchestration
+
+The agent intelligently orchestrates both MCPs:
+```
+User: "Analyze my EBS situation"
+├─ Step 1: AWS API → describe-volumes (current inventory)
+├─ Step 2: Cost Explorer → get_cost_and_usage (historical costs)
+└─ Step 3: Reconcile & recommend optimizations
+```
+
+### Consent Management
+
+**Read-only operations** (describe, list, get) execute automatically:
+- ✅ No confirmation needed for analysis queries
+- ✅ Fast, friction-free cost exploration
+
+**Mutation operations** (modify, delete, stop, start) require explicit user approval:
+- ⚠️ Chainlit prompts user with operation details
+- 🔐 User types "yes" or "no" to approve/deny
+- 📝 All decisions logged for audit trail
+
+### Quick Start
+```bash
+# 1. Configure MCP servers
+cp .chainlit/mcp.json.example .chainlit/mcp.json
+
+# 2. Ensure IAM permissions (see below)
+
+# 3. Run the assistant
+CHAINLIT_MCP_CONFIG=.chainlit/mcp.json chainlit run src/ui/app.py --host 0.0.0.0 --port 8000
+```
+
+### Required IAM Permissions
+
+Your EC2 instance role needs:
+
+**For Cost Analysis (read-only)**:
+- `ce:GetCostAndUsage`
+- `ce:GetCostForecast`
+- `ec2:DescribeVolumes`
+- `ec2:DescribeInstances`
+
+**For Infrastructure Modifications (optional)**:
+- `ec2:ModifyVolume` (EBS type changes)
+- `ec2:StopInstances` / `ec2:StartInstances` (instance control)
+
+See `MCPBedrockPolicy.json` for complete policy.
+
+### Example Queries
+```
+"What were my AWS costs last month?"
+"Analyze my EBS volumes and suggest optimizations"
+"Compare my costs between September and October"
+"Stop the Dev and Integration instances"  # Requires consent
+```
+
+### Architecture
+```
+┌─────────────────────────────────────────────┐
+│  Chainlit UI (User Interface)               │
+└──────────────────┬──────────────────────────┘
+                   │
+┌──────────────────▼──────────────────────────┐
+│  LangGraph Agent (Claude 3.5 Sonnet)        │
+│  - Smart MCP orchestration                  │
+│  - Consent management                       │
+│  - Response streaming                       │
+└──────────────┬────────────────┬─────────────┘
+               │                │
+     ┌─────────▼──────┐  ┌─────▼──────────┐
+     │ AWS Cost       │  │ AWS API MCP    │
+     │ Explorer MCP   │  │ (Real-time)    │
+     │ (Historical)   │  │                │
+     └────────────────┘  └────────────────┘
+```
 
 ## Security & Guardrails
 
