@@ -59,6 +59,31 @@ import altair as alt
 import os
 
 def render_vega_lite_png(spec: Union[str, dict], output_path: str = "outputs/chart.png") -> str:
+    """
+    Render a Vega-Lite JSON specification as a PNG chart.
+    
+    Args:
+        spec: A complete Vega-Lite specification (dict or JSON string).
+              Must include: $schema, data, mark, encoding.
+              Recommended: width, height, title for better visuals.
+        output_path: Where to save the PNG file.
+    
+    Returns:
+        Success message if chart created, error message otherwise.
+    
+    Example spec for bar chart:
+    {
+        "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+        "width": 400, "height": 300,
+        "title": "Cost by Service",
+        "data": {"values": [{"name": "EC2", "value": 150}, {"name": "S3", "value": 30}]},
+        "mark": "bar",
+        "encoding": {
+            "x": {"field": "name", "type": "nominal"},
+            "y": {"field": "value", "type": "quantitative"}
+        }
+    }
+    """
     import altair as alt
     import json
     import chainlit as cl
@@ -69,9 +94,19 @@ def render_vega_lite_png(spec: Union[str, dict], output_path: str = "outputs/cha
         if isinstance(spec, str):
             spec = json.loads(spec)
         
-        # Force mode to vega-lite
-        if "$schema" in spec:
-            spec.pop("$schema", None)
+        # Ensure we have required fields
+        if "data" not in spec:
+            return "❌ Error: Vega-Lite spec must include 'data' field"
+        
+        # Add schema if missing
+        if "$schema" not in spec:
+            spec["$schema"] = "https://vega.github.io/schema/vega-lite/v5.json"
+        
+        # Set default dimensions if missing
+        if "width" not in spec:
+            spec["width"] = 400
+        if "height" not in spec:
+            spec["height"] = 300
         
         chart = alt.Chart.from_dict(spec)
         
@@ -100,15 +135,15 @@ def render_vega_lite_png(spec: Union[str, dict], output_path: str = "outputs/cha
         try:
             loop = asyncio.get_event_loop()
             if loop.is_running():
-                # We're in an async context
                 asyncio.create_task(send_image())
             else:
                 asyncio.run(send_image())
         except RuntimeError:
-            # If we can't get the loop, try creating one
             asyncio.run(send_image())
         
-        return f"✅ Chart created and displayed. Data visualization shows your AWS cost information."
+        return f"✅ Chart created and displayed successfully."
         
+    except json.JSONDecodeError as e:
+        return f"❌ Invalid JSON in spec: {str(e)}"
     except Exception as e:
         return f"❌ Failed to create chart: {str(e)}"
