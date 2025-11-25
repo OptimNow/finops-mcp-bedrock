@@ -10,7 +10,6 @@ import json
 import os
 
 
-# ---------- Titan Image Gen (v2) ----------
 def titan_image_generate(
     prompt: str,
     width: int = 1024,
@@ -58,7 +57,6 @@ def titan_image_generate(
     return out_path
 
 
-# ---------- Smart Chart Generator ----------
 def create_chart(
     chart_type: str,
     data: List[Dict[str, Any]],
@@ -77,19 +75,16 @@ def create_chart(
     
     Args:
         chart_type: Type of chart - "bar", "line", "pie", "area"
-        data: List of data points as dictionaries. 
-              For time series, use ISO dates: [{"date": "2025-08-01", "cost": 100}, ...]
-              For categories: [{"service": "EC2", "cost": 150}, ...]
-              For multi-series: add a type field [{"date": "2025-08-01", "cost": 100, "type": "Actual"}, ...]
-        x_field: Field name for X axis (e.g., "date", "service", "month")
-        y_field: Field name for Y axis (e.g., "cost", "amount", "value")
+        data: List of data points as dictionaries.
+        x_field: Field name for X axis
+        y_field: Field name for Y axis
         title: Chart title
-        color_field: Optional field for color grouping (e.g., "type" for Actual vs Forecast)
+        color_field: Optional field for color grouping
         x_title: Optional custom X axis title
-        y_title: Optional custom Y axis title  
+        y_title: Optional custom Y axis title
         color_scheme: Optional color mapping like {"Actual": "blue", "Forecast": "orange"}
-        width: Chart width in pixels (default 500)
-        height: Chart height in pixels (default 300)
+        width: Chart width in pixels
+        height: Chart height in pixels
     
     Returns:
         Success message if chart created, error message otherwise.
@@ -100,20 +95,17 @@ def create_chart(
     
     try:
         if not data:
-            return "❌ Error: No data provided for chart"
+            return "Error: No data provided for chart"
         
-        # Detect if x_field contains dates (ISO format)
+        # Detect if x_field contains dates
         is_temporal = False
         sample_value = str(data[0].get(x_field, ""))
         if len(sample_value) >= 10 and sample_value[4:5] == "-" and sample_value[7:8] == "-":
             is_temporal = True
         
-        # For temporal data, convert to month labels for cleaner display
+        # For temporal data, convert to month labels
         if is_temporal:
-            # Sort data by date first
             data = sorted(data, key=lambda x: x[x_field])
-            
-            # Convert dates to month labels (e.g., "Aug 2025")
             for item in data:
                 date_str = item[x_field]
                 try:
@@ -124,7 +116,6 @@ def create_chart(
                     item["_month_label"] = date_str
                     item["_sort_key"] = date_str
             
-            # Get unique months in order for the axis
             unique_months = []
             seen = set()
             for item in data:
@@ -151,11 +142,9 @@ def create_chart(
             "grey": "#7f7f7f"
         }
         
-        # Build the chart using Altair directly (more reliable than raw spec)
         source = alt.Data(values=data)
         
         if chart_type == "pie":
-            # Pie chart
             chart = alt.Chart(source).mark_arc(innerRadius=50).encode(
                 theta=alt.Theta(field=y_field, type="quantitative"),
                 color=alt.Color(
@@ -163,18 +152,12 @@ def create_chart(
                     type="nominal",
                     title=x_title or x_field.replace("_", " ").title()
                 )
-            ).properties(
-                width=width,
-                height=height,
-                title=title
-            )
+            ).properties(width=width, height=height, title=title)
         
         elif color_field and color_scheme:
-            # Multi-series chart (e.g., Actual vs Forecast)
             domain = list(color_scheme.keys())
             range_colors = [color_map.get(color_scheme[k].lower(), color_scheme[k]) for k in domain]
             
-            # Create base encoding
             x_enc = alt.X(
                 field=x_field_display,
                 type="nominal",
@@ -198,13 +181,8 @@ def create_chart(
             )
             
             if chart_type == "line":
-                # For line charts with multiple series, use different stroke dash
                 stroke_dash_range = [[1, 0] if k != "Forecast" else [5, 5] for k in domain]
-                
-                chart = alt.Chart(source).mark_line(
-                    point=True,
-                    strokeWidth=2
-                ).encode(
+                chart = alt.Chart(source).mark_line(point=True, strokeWidth=2).encode(
                     x=x_enc,
                     y=y_enc,
                     color=color_enc,
@@ -214,41 +192,24 @@ def create_chart(
                         scale=alt.Scale(domain=domain, range=stroke_dash_range),
                         legend=None
                     )
-                ).properties(
-                    width=width,
-                    height=height,
-                    title=title
-                )
+                ).properties(width=width, height=height, title=title)
             elif chart_type == "bar":
                 chart = alt.Chart(source).mark_bar().encode(
                     x=x_enc,
                     y=y_enc,
                     color=color_enc,
                     xOffset=alt.XOffset(field=color_field, type="nominal")
-                ).properties(
-                    width=width,
-                    height=height,
-                    title=title
-                )
+                ).properties(width=width, height=height, title=title)
             elif chart_type == "area":
-                chart = alt.Chart(source).mark_area(
-                    line=True,
-                    point=True,
-                    opacity=0.5
-                ).encode(
+                chart = alt.Chart(source).mark_area(line=True, point=True, opacity=0.5).encode(
                     x=x_enc,
                     y=y_enc,
                     color=color_enc
-                ).properties(
-                    width=width,
-                    height=height,
-                    title=title
-                )
+                ).properties(width=width, height=height, title=title)
             else:
-                return f"❌ Unknown chart type: {chart_type}"
+                return f"Unknown chart type: {chart_type}"
         
         else:
-            # Single series chart
             x_enc = alt.X(
                 field=x_field_display,
                 type="nominal",
@@ -271,43 +232,27 @@ def create_chart(
                     color=alt.Color(field=x_field_display, type="nominal", legend=None)
                 )
             elif chart_type == "line":
-                chart = alt.Chart(source).mark_line(
-                    point=True,
-                    strokeWidth=2
-                ).encode(
+                chart = alt.Chart(source).mark_line(point=True, strokeWidth=2).encode(
                     x=x_enc,
                     y=y_enc
                 )
             elif chart_type == "area":
-                chart = alt.Chart(source).mark_area(
-                    line=True,
-                    point=True
-                ).encode(
+                chart = alt.Chart(source).mark_area(line=True, point=True).encode(
                     x=x_enc,
                     y=y_enc
                 )
             else:
-                return f"❌ Unknown chart type: {chart_type}. Use: bar, line, pie, area"
+                return f"Unknown chart type: {chart_type}. Use: bar, line, pie, area"
             
-            chart = chart.properties(
-                width=width,
-                height=height,
-                title=title
-            )
+            chart = chart.properties(width=width, height=height, title=title)
         
-        # Save the chart
         out_dir = "outputs"
         os.makedirs(out_dir, exist_ok=True)
         out_path = os.path.join(out_dir, "chart.png")
         chart.save(out_path, format="png")
         
-        # Send to Chainlit
         async def send_image():
-            image_element = cl.Image(
-                path=out_path,
-                name=title,
-                display="inline"
-            )
+            image_element = cl.Image(path=out_path, name=title, display="inline")
             await cl.Message(content="", elements=[image_element]).send()
         
         try:
@@ -319,13 +264,51 @@ def create_chart(
         except RuntimeError:
             asyncio.run(send_image())
         
-        return f"✅ {chart_type.title()} chart '{title}' created successfully."
+        return f"Chart '{title}' created successfully."
         
     except Exception as e:
         import traceback
-        return f"❌ Failed to create chart: {str(e)}\n{traceback.format_exc()}"
+        return f"Failed to create chart: {str(e)}\n{traceback.format_exc()}"
 
 
-# ---------- Keep old function for backward compatibility ----------
 def render_vega_lite_png(spec: Union[str, dict], output_path: str = "outputs/chart.png") -> str:
-    """
+    """Render a raw Vega-Lite JSON specification as PNG."""
+    import chainlit as cl
+    import asyncio
+    
+    try:
+        if isinstance(spec, str):
+            spec = json.loads(spec)
+        
+        if "$schema" not in spec:
+            spec["$schema"] = "https://vega.github.io/schema/vega-lite/v5.json"
+        if "width" not in spec:
+            spec["width"] = 400
+        if "height" not in spec:
+            spec["height"] = 300
+        
+        chart = alt.Chart.from_dict(spec)
+        
+        output_dir = os.path.dirname(output_path)
+        if output_dir:
+            os.makedirs(output_dir, exist_ok=True)
+        
+        chart.save(output_path, format="png")
+        
+        async def send_image():
+            image_element = cl.Image(path=output_path, name="Chart", display="inline")
+            await cl.Message(content="", elements=[image_element]).send()
+        
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                asyncio.create_task(send_image())
+            else:
+                asyncio.run(send_image())
+        except RuntimeError:
+            asyncio.run(send_image())
+        
+        return "Chart created successfully."
+        
+    except Exception as e:
+        return f"Failed to create chart: {str(e)}"
