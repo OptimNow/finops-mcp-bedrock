@@ -25,6 +25,29 @@ The UI is powered by **Chainlit**, giving you a chat interface where you can:
 - **Multi-Cloud Ready**: Extend with additional MCP servers for Azure and GCP cost analysis
 - **Interactive Chat Interface**: User-friendly Chainlit UI for natural language queries
 
+## Data Visualization
+
+The assistant includes a smart charting tool that generates professional visualizations:
+
+**Supported Chart Types:**
+- **Bar charts**: Service cost comparisons, resource breakdowns
+- **Line charts**: Cost trends over time, actual vs forecast comparisons
+- **Pie/Donut charts**: Cost distribution by service or category
+- **Area charts**: Cumulative cost visualization
+
+**Smart Features:**
+- Automatic date detection and proper axis ordering
+- Multi-series support (e.g., blue for actuals, orange for forecasts)
+- Dashed lines for forecast data
+- Custom color schemes
+
+**Example Query:**
+```
+Show my costs from August to December with actuals in blue and forecast in orange as a line chart
+```
+
+The charting tool handles all complexity internally - no need to specify JSON formats or technical details.
+
 ## 🔥 Multi-MCP Integration with Intelligent Consent Management
 
 ### What's New

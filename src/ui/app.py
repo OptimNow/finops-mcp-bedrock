@@ -32,12 +32,12 @@ if mcp_config_env and os.path.exists(mcp_config_env):
         mcp_json = json.load(f)
         logger.info(f"MCP JSON content: {json.dumps(mcp_json, indent=2)}")
 else:
-    logger.error(f"MCP config file not found or env var not set!")
+    logger.error("MCP config file not found or env var not set!")
 
 logger.info(f"Chainlit enable_mcp: {getattr(cl, 'enable_mcp', 'not set')}")
 logger.info("=" * 50)
 
-from src.tools.visual import titan_image_generate, render_vega_lite_png
+from src.tools.visual import titan_image_generate, create_chart
 from src.utils.bedrock import get_chat_model
 from src.utils.models import ModelId
 from src.utils.stream import stream_to_chainlit
@@ -111,14 +111,14 @@ async def initialize_mcp():
                 args=args,
                 env=env
             )
-            
+
             client_context = stdio_client(server_params)
             read, write = await client_context.__aenter__()
-            
+
             session_context = ClientSession(read, write)
             session = await session_context.__aenter__()
             await session.initialize()
-            
+
             server_tools = await load_mcp_tools(session)
 
             _mcp_connections.append({
@@ -132,7 +132,7 @@ async def initialize_mcp():
             logger.info(f"✅ Server '{server_name}' loaded with {len(server_tools)} tools:")
             for tool in server_tools:
                 logger.info(f"   - {tool.name}")
-            
+
             all_tools.extend(server_tools)
 
         except Exception as e:
@@ -143,7 +143,7 @@ async def initialize_mcp():
     _mcp_ready = len(all_tools) > 0
 
     logger.info("=" * 60)
-    logger.info(f"✅ MCP initialization complete!")
+    logger.info("✅ MCP initialization complete!")
     logger.info(f"   Total servers attempted: {len(servers)}")
     logger.info(f"   Total servers connected: {len(_mcp_connections)}")
     logger.info(f"   Total tools loaded: {len(_mcp_tools)}")
@@ -156,9 +156,9 @@ async def initialize_mcp():
 async def cleanup_mcp():
     """Clean up MCP connections on shutdown."""
     global _mcp_connections
-    
+
     logger.info("🔌 Cleaning up MCP connections...")
-    
+
     for connection in _mcp_connections:
         try:
             server_name = connection['name']
@@ -167,14 +167,12 @@ async def cleanup_mcp():
             logger.info(f"✅ Closed connection to '{server_name}'")
         except Exception as e:
             logger.error(f"❌ Error closing '{server_name}': {e}")
-    
+
     _mcp_connections.clear()
 
 
 def base_tools():
     """Return base visual tools."""
-    from src.tools.visual import titan_image_generate, create_chart
-    
     return [
         StructuredTool.from_function(
             func=titan_image_generate,
@@ -185,7 +183,7 @@ def base_tools():
             func=create_chart,
             name="create_chart",
             description="""Create a chart with simple parameters.
-            
+
 Parameters:
 - chart_type: "bar", "line", "pie", or "area"
 - data: List of dicts with your data. Use ISO dates for time series (YYYY-MM-DD).
@@ -204,7 +202,7 @@ create_chart(
         {"date": "2025-11-01", "cost": 25.32, "type": "Forecast"}
     ],
     x_field="date",
-    y_field="cost", 
+    y_field="cost",
     title="AWS Costs: Actual vs Forecast",
     color_field="type",
     color_scheme={"Actual": "blue", "Forecast": "orange"}
@@ -212,10 +210,11 @@ create_chart(
         ),
     ]
 
+
 def build_agent(tools: list) -> CompiledStateGraph:
     """Build the LangGraph agent with provided tools and system prompt."""
-    
-system_prompt = """You are the OptimNow FinOps Agent, an AWS cost optimization expert.
+
+    system_prompt = """You are the OptimNow FinOps Agent, an AWS cost optimization expert.
 
 ## Behavior
 - Be direct - NO apologies, NO excessive politeness
@@ -238,23 +237,15 @@ system_prompt = """You are the OptimNow FinOps Agent, an AWS cost optimization e
 - Tables for data
 - Charts for trends
 - Brief recommendations
-- No unnecessary text
-
-
-## Workflow
-1. For inventory: Query AWS API, present in table
-2. For costs: Use Cost Explorer with date range
-3. For charts: Build proper Vega-Lite spec with real data
-4. For modifications: Explain, wait for confirmation, execute, confirm completion"""
-
+- No unnecessary text"""
 
     def add_system_prompt(state):
         """Add system prompt to the state."""
         return [SystemMessage(content=system_prompt)] + state["messages"]
-    
+
     model = get_chat_model(model_id=ModelId.ANTHROPIC_CLAUDE_3_5_SONNET_US.value)
     return create_react_agent(
-        model, 
+        model,
         tools,
         state_modifier=add_system_prompt
     )
@@ -303,7 +294,7 @@ async def on_chat_start():
     await initialize_mcp()
 
     wrapped_mcp_tools = wrap_mcp_tools(_mcp_tools) if _mcp_tools else []
-    
+
     current_tools = base_tools() + wrapped_mcp_tools
     logger.info(f"Building agent with {len(current_tools)} total tools ({len(_mcp_tools)} from MCP)")
 
@@ -319,14 +310,14 @@ async def on_message(message: cl.Message):
     """Handle incoming messages."""
     agent = cast(CompiledStateGraph, cl.user_session.get("agent"))
     chat_messages = cl.user_session.get("chat_messages", [])
-    
+
     # Add the user message to history
     user_msg = HumanMessage(content=message.content)
     chat_messages.append(user_msg)
-    
+
     msg = cl.Message(content="")
     await msg.send()
-    
+
     config = RunnableConfig(
         callbacks=[cl.LangchainCallbackHandler()],
         recursion_limit=50,
@@ -334,10 +325,10 @@ async def on_message(message: cl.Message):
             "thread_id": "default"
         }
     )
-    
+
     # Collect the full response
     full_response = ""
-    
+
     try:
         async for chunk in stream_to_chainlit(agent, message.content, chat_messages[:-1], config):
             full_response += chunk
@@ -347,9 +338,9 @@ async def on_message(message: cl.Message):
         error_msg = f"\n\n❌ Error: {str(e)}"
         full_response += error_msg
         await msg.stream_token(error_msg)
-    
+
     await msg.update()
-    
+
     # Add the assistant response to history
     if full_response:
         assistant_msg = AIMessage(content=full_response)
