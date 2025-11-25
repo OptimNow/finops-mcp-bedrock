@@ -25,6 +25,41 @@ The UI is powered by **Chainlit**, giving you a chat interface where you can:
 - **Multi-Cloud Ready**: Extend with additional MCP servers for Azure and GCP cost analysis
 - **Interactive Chat Interface**: User-friendly Chainlit UI for natural language queries
 
+## Token Usage & Cost Monitoring
+
+The assistant automatically tracks and logs token usage and estimated costs for each interaction.
+
+**What's logged:**
+- Input tokens (your messages + conversation history)
+- Output tokens (assistant responses)
+- Estimated cost based on Claude 3.5 Sonnet pricing
+
+**Example log output:**
+```
+==================================================
+📊 TOKEN USAGE & COST
+==================================================
+   Input tokens:  1,234
+   Output tokens: 567
+   Total tokens:  1,801
+--------------------------------------------------
+   Input cost:    $0.003702
+   Output cost:   $0.008505
+   💰 TOTAL COST: $0.012207
+==================================================
+```
+
+**Viewing logs in real-time:**
+```bash
+sudo journalctl -u finops-chatbot.service -f
+```
+
+**Pricing reference (Claude 3.5 Sonnet, us-east-1):**
+- Input: $0.003 per 1K tokens
+- Output: $0.015 per 1K tokens
+
+This helps you monitor the cost of running your FinOps assistant and optimize prompts if needed.
+
 ## Data Visualization
 
 The assistant includes a smart charting tool that generates professional visualizations:
