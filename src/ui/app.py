@@ -173,6 +173,8 @@ async def cleanup_mcp():
 
 def base_tools():
     """Return base visual tools."""
+    from src.tools.visual import titan_image_generate, create_chart
+    
     return [
         StructuredTool.from_function(
             func=titan_image_generate,
@@ -180,88 +182,72 @@ def base_tools():
             description="Generate an image using Amazon Titan Image Generator based on a text prompt"
         ),
         StructuredTool.from_function(
-            func=render_vega_lite_png,
-            name="render_chart",
-            description="Render a Vega-Lite JSON spec as a PNG image for visualization"
+            func=create_chart,
+            name="create_chart",
+            description="""Create a chart with simple parameters.
+            
+Parameters:
+- chart_type: "bar", "line", "pie", or "area"
+- data: List of dicts with your data. Use ISO dates for time series (YYYY-MM-DD).
+- x_field: Field name for X axis
+- y_field: Field name for Y axis
+- title: Chart title
+- color_field: (optional) Field to group by color (e.g., "type" for Actual vs Forecast)
+- color_scheme: (optional) Dict mapping values to colors {"Actual": "blue", "Forecast": "orange"}
+
+Example for cost trend with actuals and forecast:
+create_chart(
+    chart_type="line",
+    data=[
+        {"date": "2025-08-01", "cost": 53.44, "type": "Actual"},
+        {"date": "2025-09-01", "cost": 23.94, "type": "Actual"},
+        {"date": "2025-11-01", "cost": 25.32, "type": "Forecast"}
+    ],
+    x_field="date",
+    y_field="cost", 
+    title="AWS Costs: Actual vs Forecast",
+    color_field="type",
+    color_scheme={"Actual": "blue", "Forecast": "orange"}
+)"""
         ),
     ]
-
 
 def build_agent(tools: list) -> CompiledStateGraph:
     """Build the LangGraph agent with provided tools and system prompt."""
     
-    system_prompt = """You are the OptimNow FinOps Agent, an AWS cost optimization expert.
+system_prompt = """You are the OptimNow FinOps Agent, an AWS cost optimization expert.
 
-## Behavior Rules
-- Be direct and concise - NO apologies, NO excessive politeness
-- If a tool fails, try an alternative approach or report the issue briefly
-- Never say "I apologize" or "I'm sorry" - just state facts and move forward
-- Always remember the conversation context
-- Present data in clear tables rather than long texts withh bullet points
+## Behavior
+- Be direct - NO apologies, NO excessive politeness
+- If something fails, try an alternative or report briefly
+- Never say "I apologize" - just state facts and move forward
+- Remember the conversation context
 
-## Tool Strategy
+## Tools
 
-**AWS API (call_aws)** - Real-time infrastructure data:
-- describe-instances, describe-volumes, list resources
-- Fast response (< 1s)
+**AWS API (call_aws)**: Real-time infrastructure (describe-instances, describe-volumes)
 
-**Cost Explorer** - Historical billing data:
-- get_cost_and_usage, get_cost_forecast
-- Data has 24-48h latency
-- If cost data unavailable, proceed with what you have
+**Cost Explorer**: Historical costs (get_cost_and_usage, get_cost_forecast)
 
-**render_chart** - Create visualizations:
-- Input: Vega-Lite JSON specification
-- Always use complete, valid Vega-Lite specs
-- Include: $schema, data, mark, encoding
-- Use appropriate chart types: bar (comparisons), line (trends), pie (proportions)
-
-## Chart Examples
-
-For cost by service (bar chart):
-```json
-{
-  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
-  "width": 400,
-  "height": 300,
-  "title": "AWS Costs by Service",
-  "data": {"values": [{"service": "EC2", "cost": 150}, {"service": "RDS", "cost": 80}]},
-  "mark": "bar",
-  "encoding": {
-    "x": {"field": "service", "type": "nominal", "title": "Service"},
-    "y": {"field": "cost", "type": "quantitative", "title": "Cost ($)"},
-    "color": {"field": "service", "type": "nominal", "legend": null}
-  }
-}
-```
-
-For cost trend over time (line chart):
-```json
-{
-  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
-  "width": 500,
-  "height": 300,
-  "title": "Cost Trend",
-  "data": {"values": [{"date": "2024-01", "cost": 100}, {"date": "2024-02", "cost": 120}]},
-  "mark": {"type": "line", "point": true},
-  "encoding": {
-    "x": {"field": "date", "type": "temporal", "title": "Date"},
-    "y": {"field": "cost", "type": "quantitative", "title": "Cost ($)"}
-  }
-}
-```
+**create_chart**: Smart chart generator - just provide data and type:
+- For time series: use ISO dates (2025-08-01)
+- For multi-series (actual vs forecast): add a "type" field and use color_field + color_scheme
+- Chart types: bar, line, pie, area
 
 ## Response Style
-- Start with action, not preamble
-- If something fails, say "Could not retrieve X. Proceeding with available data."
-- Never apologize - just fix or explain briefly
-- End with clear next steps or recommendations
+- Tables for data
+- Charts for trends
+- Brief recommendations
+- No unnecessary text
+
 
 ## Workflow
 1. For inventory: Query AWS API, present in table
 2. For costs: Use Cost Explorer with date range
 3. For charts: Build proper Vega-Lite spec with real data
 4. For modifications: Explain, wait for confirmation, execute, confirm completion"""
+
+
     def add_system_prompt(state):
         """Add system prompt to the state."""
         return [SystemMessage(content=system_prompt)] + state["messages"]
